@@ -1,0 +1,60 @@
+Catégorie,Nom, Ingrédients,Allergènes (Codes),Prix (€)
+Salades & Planches,Plateau Fromage,-,"7, 8",16.90
+Salades & Planches,Plateau Charcuterie,-,"1, 3, 7, 12, 13",16.90
+Salades & Planches,Salade César,"Mesclun, crudités, poulet, vinaigrette","1, 3, 5, 7, 9, 10, 13",16.90
+Salades & Planches,Salade Scampis,-,"2, 3, 4, 9, 10, 12, 13, 14",16.90
+Salades & Planches,Salade Paysanne,"Mesclun, crudités, PDT, lardons, œuf, champignons","1, 3, 5, 6, 9, 10, 13",16.90
+Salades & Planches,Salade Chèvre Chaud,-,"1, 3, 5, 6, 7, 8, 9, 10, 13",16.90
+Salades & Planches,"Jambon, Frites et Salades",-,"1, 3, 5, 7, 9, 10, 12",18.90
+Salades & Planches,Mozzarella Caprese,Buffala,"1, 3, 5, 7, 9, 10",16.90
+Pâtes,Penne All'Arabiatta,-,"1, 7",13.90
+Pâtes,Spaghetti Carbonara,-,"1, 3, 7, 9",15.50
+Pâtes,Spaghetti Bolognese,-,"1, 3, 9, 12, 13",15.50
+Pâtes,Tortellini Crème Jambon,-,"1, 3, 7, 9, 10",15.50
+Pâtes,Tagliatelle au Saumon,-,"1, 2, 3, 4, 7, 9, 12, 13",17.50
+Pâtes,Tagliatelle aux Scampis,-,"1, 2, 3, 4, 7, 9",17.50
+Pâtes,Fusili Valtelina,-,"1, 3, 7, 9, 10",15.50
+Pâtes,Cannelloni Ricotta Épinard,-,"1, 3, 7, 9, 10",16.90
+Pâtes,Gnocchi Quatre Fromages,-,"1, 3, 7, 9, 10",16.90
+Viandes,Goujons de Poulet,"Frites, salade, sauce ail","1, 3, 5, 7, 10, 13",18.90
+Viandes,Escalope Viennoise,Frites et salades,"1, 3, 5, 7, 9, 10, 12",23.90
+Viandes,Escalope Poulet Grillé,Frites et salades,"1, 3, 5, 7, 9, 10, 12",20.90
+Viandes,Cordon Bleu,"Frites, salade, crème champignons","1, 3, 5, 7, 9, 10, 12",23.90
+Viandes,Bouchée à la Reine,"Frites, salade","1, 3, 5, 7, 9, 10, 12",22.90
+Viandes,Entrecôte de Bœuf,"Frites, salade (sauce au choix)","1, 3, 5, 7, 9, 10, 12",29.90
+Viandes,Mixte Grill,"Bœuf, poulet, porc, saucisse, PDT romarin","1, 3, 5, 7, 9, 10, 12",25.90
+,,,,
+Sauces,Crème champignons,"crème fraîche, champignons","1,7",0.1
+Sauces,Poivre,crème fraîche,"1,7,10",0.1
+Sauces,Gorgonzola,"crème fraîche, gorgonzola","1,7",0.1
+Sauces,Remoulade,,"3,7",0.1
+Sauces,Béarnaise,,"3,7",0.1
+Poissons,Scampis Grillés (Ail),Pomme de terre et salades,"1, 2, 3, 4, 9, 10, 12, 13, 14",23.90
+Poissons,Pavé de Saumon au Four,Pomme de terre et salades,"1, 2, 3, 4, 9, 10, 12, 13, 14",24.90
+Poissons,Fish'n Chips,"Frites, salade, sauce rémoulade","1, 3, 4, 5, 10",20.90
+Burgers,Cheeseburger,"Angus, cheddar, salade, tomate, oignon, frites","1, 3, 5, 7, 10, 11",16.90
+Burgers,Baconburger,"Angus, cheddar, bacon, salade, tomate, frites","1, 3, 5, 7, 10, 11",18.90
+Burgers,Chilli Cheeseburger,"Angus, cheddar, chilli, salade, tomate, frites","1, 3, 5, 7, 10, 11",17.90
+Burgers,Burger Gourmande,"Angus, œuf, bacon, salade, onion rings, frites","1, 3, 5, 7, 10, 11, 12, 13",22.90
+Burgers,Italianburger,"Angus, buffala, jambon parme, salade, frites","1, 3, 5, 7, 10, 11",22.90
+Burgers,Pork Burger,"Porc, cheddar, œuf, bacon, salade, frites","1, 3, 5, 7, 10, 11",22.90
+Burgers,Chickenburger,"Poulet pané, rémoulade, salade, frites","1, 3, 5, 7, 10, 11",16.90
+Burgers,Double Premium Burger,"Double Angus, cheddar, œuf, salade, tomates, frites","1, 3, 5, 7, 10, 11",25.90
+Burgers,Veggieburger,"Halloumi, salade, tomate, oignon, cornichons, sour sauce, frites","1, 3, 5, 7, 10, 11",16.90
+Burgers,Fishburger,"Poisson pané, salade, tomate, oignon, cornichons, sauce remoulade, frites","1, 3, 4, 5, 7, 10, 11",16.90
+Snacks,Frites,-,-,5.00
+Snacks,Sandwich Jambon Fromage,-,-,6.50
+Snacks,Flammenkuechen,"Classique, oignons, champignons ou chèvre",-,13.90
+Snacks,Pizza di Pinsa,Margherita,,12.90
+Snacks,Pizza di Pinsa,Diavola,,13.90
+Snacks,Pizza di Pinsa,Prosciuto,,13.90
+Snacks,Pizza di Pinsa,Salami,,13.90
+Snacks,Pizza di Pinsa,Quatro Formaggi,,13.90
+Snacks,Pizza di Pinsa,Buffala,,17.90
+Snacks,Pizza di Pinsa,Scampi,,17.90
+Desserts,Tarte Maison,-,"1, 3, 7, 8",6.00
+Desserts,Dame Blanche,-,"1, 3, 7",8.00
+Desserts,Coupe Amarena,,"1, 3, 7",8.00
+Desserts,Banana Split,,"1, 3, 7",8.00
+Desserts,Le Colonel,,"1, 3, 7",8.00
+Desserts,Coupe Fraises Melba,,"1, 3, 7",8.00
