@@ -8,6 +8,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
+  --font-display: var(--font-display);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -45,75 +46,101 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Millewee custom tokens */
+  --color-mw-green: var(--mw-green);
+  --color-mw-sunflower: var(--mw-sunflower);
+  --color-mw-leather: var(--mw-leather);
+  --color-mw-stone: var(--mw-stone);
+  --color-mw-amber: var(--mw-amber);
 }
 
+/* ═══════════════════════════════════════════════════
+   MILLEWEE — Light mode (terrace-friendly)
+   Cream backgrounds, dark brown text, amber accents
+   ═══════════════════════════════════════════════════ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
+  --background: #faf6f0;          /* warm cream */
+  --foreground: #2a1f17;          /* dark leather text */
+  --card: #f5efe6;                /* slightly darker cream */
+  --card-foreground: #2a1f17;
+  --popover: #f5efe6;
+  --popover-foreground: #2a1f17;
+  --primary: #d4a24e;             /* amber / Edison glow */
+  --primary-foreground: #1a1310;  /* dark text on amber buttons */
+  --secondary: #ede5d8;           /* muted warm beige */
+  --secondary-foreground: #4a3228;
+  --muted: #ede5d8;
+  --muted-foreground: #7a6e63;    /* stone grey */
+  --accent: #f0c040;              /* sunflower yellow */
+  --accent-foreground: #1a1310;
+  --border: #ddd5c8;
+  --input: #ddd5c8;
+  --ring: #d4a24e;
+  --chart-1: #d4a24e;
+  --chart-2: #3d6b35;
+  --chart-3: #8b6914;
+  --chart-4: #a09890;
+  --chart-5: #8b1a1a;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #f5efe6;
+  --sidebar-foreground: #2a1f17;
+  --sidebar-primary: #d4a24e;
+  --sidebar-primary-foreground: #1a1310;
+  --sidebar-accent: #ede5d8;
+  --sidebar-accent-foreground: #4a3228;
+  --sidebar-border: #ddd5c8;
+  --sidebar-ring: #d4a24e;
+  --destructive: #8b1a1a;         /* darker red (light mode) */
+  /* Millewee brand tokens */
+  --mw-green: #2d5a25;           /* darker living wall green (light mode) */
+  --mw-sunflower: #f0c040;       /* sunflower accent */
+  --mw-leather: #4a3228;         /* dark leather */
+  --mw-stone: #a09890;           /* stone wall grey */
+  --mw-amber: #d4a24e;           /* Edison bulb glow */
 }
 
+/* ═══════════════════════════════════════════════════
+   MILLEWEE — Dark mode (interior ambiance)
+   Dark leather bg, cream text, warm amber/gold
+   ═══════════════════════════════════════════════════ */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #1a1310;          /* very dark leather */
+  --foreground: #f5f0e8;          /* warm cream */
+  --card: #2a2118;                /* warm dark brown */
+  --card-foreground: #f5f0e8;
+  --popover: #2a2118;
+  --popover-foreground: #f5f0e8;
+  --primary: #d4a24e;             /* amber / Edison glow */
+  --primary-foreground: #1a1310;
+  --secondary: #3a2e24;           /* slightly lighter brown */
+  --secondary-foreground: #f5f0e8;
+  --muted: #3a2e24;
+  --muted-foreground: #a09890;    /* stone grey */
+  --accent: #f0c040;              /* sunflower yellow */
+  --accent-foreground: #1a1310;
+  --destructive: #7a1a1a;         /* darker red (dark mode) */
+  --border: rgba(245, 240, 232, 0.1);
+  --input: rgba(245, 240, 232, 0.15);
+  --ring: #d4a24e;
+  --chart-1: #d4a24e;
+  --chart-2: #8a7e56;
+  --chart-3: #f0c040;
+  --chart-4: #a09890;
+  --chart-5: #7a1a1a;
+  --sidebar: #2a2118;
+  --sidebar-foreground: #f5f0e8;
+  --sidebar-primary: #d4a24e;
+  --sidebar-primary-foreground: #1a1310;
+  --sidebar-accent: #3a2e24;
+  --sidebar-accent-foreground: #f5f0e8;
+  --sidebar-border: rgba(245, 240, 232, 0.1);
+  --sidebar-ring: #d4a24e;
+  /* Millewee brand tokens (dark mode) */
+  --mw-green: #7a8a4e;           /* khaki-green — warm but with more green */
+  --mw-sunflower: #f0c040;
+  --mw-leather: #4a3228;
+  --mw-stone: #a09890;
+  --mw-amber: #d4a24e;
 }
 
 @layer base {

@@ -1,0 +1,248 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Categories (shared for dishes and drinks) ───
+
+model category {
+  id         Int     @id @default(autoincrement())
+  name_fr    String
+  name_en    String?
+  name_lb    String?
+  type       String  // "dishes" | "drinks"
+  sort_order Int     @default(0)
+  is_active  Boolean @default(true)
+
+  dishes categories_dishes[]
+  drinks categories_drinks[]
+}
+
+// ─── Dishes ───
+
+model dish {
+  dish_id         Int      @id @default(autoincrement())
+  name_fr         String
+  name_en         String?
+  name_lb         String?
+  description_fr  String?
+  description_en  String?
+  description_lb  String?
+  price_eur       Decimal  @db.Decimal(6, 2)
+  image_url       String?
+  is_available    Boolean  @default(true)
+  is_popular      Boolean  @default(false)
+  is_new          Boolean  @default(false)
+  sort_order      Int      @default(0)
+  has_variants    Boolean  @default(false)
+  selection_label String?
+  record_date     DateTime @default(now())
+
+  categories          categories_dishes[]
+  variants            dish_variant[]
+  allergens           dish_allergen[]
+  association_sources item_association[]     @relation("source_dish")
+  association_targets item_association[]     @relation("target_dish")
+  weekly_specials     weekly_special[]
+  customer_prefs      customer_preference[] @relation("dish_pref")
+}
+
+// ─── Dish Variants (Pizza types, Flammenkuechen flavors) ───
+
+model dish_variant {
+  id           Int      @id @default(autoincrement())
+  dish_id      Int
+  dish         dish     @relation(fields: [dish_id], references: [dish_id])
+  name_fr      String
+  name_en      String?
+  name_lb      String?
+  price_eur    Decimal? @db.Decimal(6, 2) // NULL = use parent dish price
+  sort_order   Int      @default(0)
+  is_available Boolean  @default(true)
+}
+
+// ─── Allergens (EU codes 1-14) ───
+
+model allergen {
+  id      Int     @id // EU allergen code (1-14)
+  name_fr String
+  name_en String?
+  name_lb String?
+  icon    String?
+  dishes  dish_allergen[]
+}
+
+model dish_allergen {
+  dish_id     Int
+  allergen_id Int
+  dish        dish     @relation(fields: [dish_id], references: [dish_id])
+  allergen    allergen @relation(fields: [allergen_id], references: [id])
+
+  @@id([dish_id, allergen_id])
+}
+
+// ─── Drinks ───
+
+model drink {
+  drink_id       Int      @id @default(autoincrement())
+  name_fr        String
+  name_en        String?
+  name_lb        String?
+  description_fr String?
+  description_en String?
+  description_lb String?
+  selection_mode String?  // "selection" | "variant" | null
+  record_date    DateTime @default(now())
+
+  categories     categories_drinks[]
+  sizes          drink_size[]
+  selections     drink_selection[]
+  customer_prefs customer_preference[] @relation("drink_pref")
+}
+
+// ─── Drink Sizes (price + image live here) ───
+
+model drink_size {
+  drink_id  Int
+  size      String   // "0.30L", "Verre", "Bouteille", "standard"
+  price_eur Decimal  @db.Decimal(6, 2)
+  discount  Decimal? @db.Decimal(6, 2)
+  image_url String?
+
+  drink drink @relation(fields: [drink_id], references: [drink_id])
+
+  @@id([drink_id, size])
+}
+
+// ─── Drink Selections (choices within a drink) ───
+
+model drink_selection {
+  id           Int      @id @default(autoincrement())
+  drink_id     Int
+  drink        drink    @relation(fields: [drink_id], references: [drink_id])
+  name_fr      String
+  name_en      String?
+  name_lb      String?
+  price_delta  Decimal  @default(0) @db.Decimal(6, 2)
+  sort_order   Int      @default(0)
+  is_available Boolean  @default(true)
+}
+
+// ─── Junction Tables ───
+
+model categories_dishes {
+  category_id Int
+  dish_id     Int
+  category    category @relation(fields: [category_id], references: [id])
+  dish        dish     @relation(fields: [dish_id], references: [dish_id])
+
+  @@id([category_id, dish_id])
+}
+
+model categories_drinks {
+  category_id Int
+  drink_id    Int
+  category    category @relation(fields: [category_id], references: [id])
+  drink       drink    @relation(fields: [drink_id], references: [drink_id])
+
+  @@id([category_id, drink_id])
+}
+
+// ─── Item Associations (sauce ↔ meat, UI later) ───
+
+model item_association {
+  id             Int     @id @default(autoincrement())
+  source_dish_id Int
+  target_dish_id Int
+  source_dish    dish    @relation("source_dish", fields: [source_dish_id], references: [dish_id])
+  target_dish    dish    @relation("target_dish", fields: [target_dish_id], references: [dish_id])
+  is_default     Boolean @default(false)
+  sort_order     Int     @default(0)
+
+  @@unique([source_dish_id, target_dish_id])
+}
+
+// ─── Customer Preferences (suggestions engine, UI later) ───
+
+model customer_preference {
+  id           Int      @id @default(autoincrement())
+  account_name String
+  dish_id      Int?
+  drink_id     Int?
+  dish         dish?    @relation("dish_pref", fields: [dish_id], references: [dish_id])
+  drink        drink?   @relation("drink_pref", fields: [drink_id], references: [drink_id])
+  order_count  Int      @default(1)
+  last_ordered DateTime @default(now())
+  created_at   DateTime @default(now())
+
+  @@unique([account_name, dish_id])
+  @@unique([account_name, drink_id])
+}
+
+// ─── Weekly Specials ───
+
+model weekly_special {
+  id            Int      @id @default(autoincrement())
+  dish_id       Int
+  dish          dish     @relation(fields: [dish_id], references: [dish_id])
+  start_date    DateTime @db.Date
+  end_date      DateTime @db.Date
+  special_price Decimal? @db.Decimal(6, 2)
+  description   String?
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+}
+
+// ─── Live Events ───
+
+model live_event {
+  id           Int      @id @default(autoincrement())
+  title_fr     String
+  title_en     String?
+  title_lb     String?
+  event_date   DateTime
+  event_type   String   // "sport" | "bowling" | "music" | "other"
+  description  String?
+  image_url    String?
+  is_active    Boolean  @default(true)
+  is_recurring Boolean  @default(false)
+  recurrence   String?
+  created_at   DateTime @default(now())
+}
+
+// ─── Transfers (blockchain order tracking) ───
+
+model transfer {
+  id           String    @id
+  from_account String
+  to_account   String
+  amount       String
+  symbol       String    @default("HBD")
+  memo         String
+  parsed_memo  String?
+  received_at  DateTime
+  fulfilled    Boolean   @default(false)
+  fulfilled_at DateTime?
+  created_at   DateTime  @default(now())
+
+  @@index([received_at(sort: Desc)], map: "idx_transfers_unfulfilled")
+  @@index([to_account])
+}
+
+// ─── Admin ───
+
+model admin_session {
+  id         String   @id @default(cuid())
+  created_at DateTime @default(now())
+  expires_at DateTime
+}
+
+// ─── Restaurant Tables ───
+
+model restaurant_table {
+  table_number Int    @id
+  location     String @default("intérieur") // "intérieur" | "terrasse"
+}
