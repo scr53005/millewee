@@ -17,7 +17,7 @@ const dmSans = DM_Sans({
 
 export const metadata: Metadata = {
   title: "Café-Brasserie Millewee",
-  description: "Brasserie Millewee — Burgers, plats du jour et plus à Luxembourg",
+  description: "Brasserie Millewee — Burgers, plats du jour et plus à Luxembourg Gasperich",
 };
 
 export default function RootLayout({
