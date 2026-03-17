@@ -43,3 +43,7 @@ next-env.d.ts
 # raw data files (not for production)
 /public/images-raw/
 /public/dishes-raw/
+
+# qr code images (not for production)
+/scripts/qrcodes/output_qrs/
+/scripts/qrcodes/__pycache__/

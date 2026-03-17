@@ -56,11 +56,16 @@
 - [x] **Favicon** — custom favicon.ico from logo (via GIMP)
 - [x] **shadcn components added** — badge, card, dialog, dropdown-menu, input, label, scroll-area, select, sheet, sonner, table, tabs
 
-### NOT YET DONE
+- [x] **Vercel Prisma PostgreSQL** — prod DB created, connection strings auto-set by Vercel (preview+prod only, not dev). Hive account + restaurant ID env vars also set. Build succeeds.
+- [x] **Data copy script** — `scripts/copy-data.ts` copies all seeded data from dev → prod DB (reads `POSTGRES_URL_DEV` + `POSTGRES_URL_PROD`)
+- [x] **QR code generation script** — `scripts/qrcodes/generateqrs.py` (segno + Pillow + python-docx)
+  - Branded stickers: Millewee logo, "Table: X", QR with Innopay logo overlay, "Scan to order!" bubble, URL
+  - Sitka Small font, Millewee amber/cream color scheme, 5cm × 5.25cm stickers
+  - DOCX output: 5×3 landscape grid (15 per page), 44 tables = 3 pages
+  - Run: `python generateqrs.py` (or `--t` for test mode with 4 tables)
+- [x] **Fruits rouges fix** — CSV parsing quirk corrected in both dev and prod databases
 
-- [ ] **Vercel PostgreSQL database** — create prod DB, set `POSTGRES_URL` in Vercel env vars, run `prisma db push` against prod
-- [ ] **QR code generation script** — read `milleweeuri.txt` + `milleweetables.csv`, output QR images per table
-- [ ] **Known translation quirk** — "Fruits rouges" tea selection got split into "Fruits r" / "ges" during CSV parsing (seed script fix needed)
+### Phase 1 complete.
 
 ### Data files location
 
