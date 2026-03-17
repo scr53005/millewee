@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-03-16
+**Last updated**: 2026-03-17
 **Plan file**: `C:\Users\Sorin\.claude\plans\precious-spinning-shell.md`
 
 ---
@@ -43,11 +43,24 @@
   - EU allergen reference data (codes 1-14, trilingual FR/EN/LB)
   - Restaurant tables from `scripts/qrcodes/milleweetables.csv` (21-47 = terrasse, rest = intérieur)
 - [x] **Seed executed** — 14 allergens, 8 dish categories, 52 dishes (7 variants, 260 allergen links), 11 drink categories, 45 drinks (43 sizes, 35 selections), 44 tables
+- [x] **Category translations** — all 19 categories (8 dish + 11 drink) have FR/EN/LB names, hardcoded in seed script
+- [x] **Translation script** — `scripts/translate-table.ts` (reusable, Claude API via Haiku 4.5)
+  - Takes any table name as input, auto-detects `_fr/_en/_lb` column groups
+  - Translates missing languages from whichever has data
+  - Supports `--dry-run`, batches in chunks of 25, logs token usage
+  - Requires `ANTHROPIC_API_KEY` in `.env.local`
+- [x] **Translations executed** — dish (79 translations), drink (54), dish_variant (7), drink_selection (35). Total cost: ~$0.04
+- [x] **Seed script: sequence resets** — `ALTER SEQUENCE ... RESTART WITH 1` on all auto-increment tables, so IDs always start at 1 on re-seed
+- [x] **GitHub repo** — `scr53005/millewee` (private), first commit pushed
+- [x] **Vercel project** — imported from GitHub, build script fixed (`prisma generate && next build`)
+- [x] **Favicon** — custom favicon.ico from logo (via GIMP)
+- [x] **shadcn components added** — badge, card, dialog, dropdown-menu, input, label, scroll-area, select, sheet, sonner, table, tabs
 
 ### NOT YET DONE
 
-- [ ] **Add remaining shadcn components**: card, sheet, badge, dialog, dropdown-menu, scroll-area, sonner, select, input, label, table, tabs
+- [ ] **Vercel PostgreSQL database** — create prod DB, set `POSTGRES_URL` in Vercel env vars, run `prisma db push` against prod
 - [ ] **QR code generation script** — read `milleweeuri.txt` + `milleweetables.csv`, output QR images per table
+- [ ] **Known translation quirk** — "Fruits rouges" tea selection got split into "Fruits r" / "ges" during CSV parsing (seed script fix needed)
 
 ### Data files location
 
