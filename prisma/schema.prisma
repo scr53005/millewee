@@ -36,6 +36,7 @@ model dish {
   is_available    Boolean  @default(true)
   is_popular      Boolean  @default(false)
   is_new          Boolean  @default(false)
+  discount        Float?   @default(1.0)
   sort_order      Int      @default(0)
   has_variants    Boolean  @default(false)
   selection_label String?
@@ -109,7 +110,7 @@ model drink_size {
   drink_id  Int
   size      String   // "0.30L", "Verre", "Bouteille", "standard"
   price_eur Decimal  @db.Decimal(6, 2)
-  discount  Decimal? @db.Decimal(6, 2)
+  discount  Float?   @default(1.0)
   image_url String?
 
   drink drink @relation(fields: [drink_id], references: [drink_id])

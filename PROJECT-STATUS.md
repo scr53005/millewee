@@ -1,7 +1,7 @@
 # Millewee — Project Status
 
 **Last updated**: 2026-03-17
-**Plan file**: `C:\Users\Sorin\.claude\plans\precious-spinning-shell.md`
+**Plan file**: `C:\Users\Sorin\.claude\plans\floofy-stirring-pascal.md`
 
 ---
 

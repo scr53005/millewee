@@ -34,7 +34,7 @@ const EU_ALLERGENS: { id: number; name_fr: string; name_en: string; name_lb: str
   { id: 3,  name_fr: "Œufs",           name_en: "Eggs",            name_lb: "Eeër",            icon: "🥚" },
   { id: 4,  name_fr: "Poissons",       name_en: "Fish",            name_lb: "Fësch",           icon: "🐟" },
   { id: 5,  name_fr: "Arachides",      name_en: "Peanuts",         name_lb: "Äerdnëss",        icon: "🥜" },
-  { id: 6,  name_fr: "Soja",           name_en: "Soy",             name_lb: "Soja",            icon: "🫘" },
+  { id: 6,  name_fr: "Soja",           name_en: "Soy",             name_lb: "Soja",            icon: "🌱" },
   { id: 7,  name_fr: "Lait",           name_en: "Milk",            name_lb: "Mëllech",         icon: "🥛" },
   { id: 8,  name_fr: "Fruits à coque", name_en: "Tree nuts",       name_lb: "Nëss",            icon: "🌰" },
   { id: 9,  name_fr: "Céleri",         name_en: "Celery",          name_lb: "Zelleri",         icon: "🥬" },
