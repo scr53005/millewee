@@ -66,7 +66,7 @@ export default function AllergensPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="sticky left-0 bg-white z-10 min-w-[180px]">Plat</TableHead>
+                <TableHead className="sticky left-0 bg-[#fdf6e9] z-10 min-w-[180px]">Plat</TableHead>
                 {allergens.map((a) => (
                   <TableHead key={a.id} className="text-center w-10 px-1">
                     <div className="flex flex-col items-center gap-0.5" title={a.name_fr}>

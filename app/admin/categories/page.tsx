@@ -99,8 +99,8 @@ export default function CategoriesPage() {
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(String(v))}>
           <div className="flex items-center justify-between mb-4">
             <TabsList className="bg-gray-100">
-              <TabsTrigger value="dishes">Plats</TabsTrigger>
-              <TabsTrigger value="drinks">Boissons</TabsTrigger>
+              <TabsTrigger value="dishes" className="data-active:bg-[#fdf6e9] data-active:text-gray-900 data-active:font-semibold data-active:ring-[1.5px] data-active:ring-[#d4a24e]">Plats</TabsTrigger>
+              <TabsTrigger value="drinks" className="data-active:bg-[#fdf6e9] data-active:text-gray-900 data-active:font-semibold data-active:ring-[1.5px] data-active:ring-[#d4a24e]">Boissons</TabsTrigger>
             </TabsList>
             <Button onClick={openCreate} size="sm" className="bg-[#d4a24e] text-[#1a1310] hover:bg-[#c4922e]">
               <Plus className="h-4 w-4 mr-1" /> Ajouter
