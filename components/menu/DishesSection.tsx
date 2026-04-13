@@ -3,9 +3,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useMenuDishes, type MenuCategory, type MenuDish } from '@/hooks/use-menu';
-import { DishCard } from './DishCard';
+import { DishCard, type AllergenDisplayMode } from './DishCard';
 
-export function DishesSection() {
+interface DishesSectionProps {
+  allergenDisplay?: AllergenDisplayMode;
+}
+
+export function DishesSection({ allergenDisplay = 'inline' }: DishesSectionProps) {
   const { t, localized } = useI18n();
   const { data, isLoading } = useMenuDishes();
   const [activeCategory, setActiveCategory] = useState<number | null>(null);
@@ -140,7 +144,7 @@ export function DishesSection() {
               </h3>
               <div className="space-y-2">
                 {catDishes.map((dish) => (
-                  <DishCard key={dish.dish_id} dish={dish} />
+                  <DishCard key={dish.dish_id} dish={dish} allergenDisplay={allergenDisplay} />
                 ))}
               </div>
             </div>

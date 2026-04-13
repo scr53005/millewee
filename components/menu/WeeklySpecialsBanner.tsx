@@ -6,7 +6,7 @@ import { useMenuSpecials } from '@/hooks/use-menu';
 import { type CartItemDish } from '@/lib/cart/types';
 import { Button } from '@/components/ui/button';
 import { Plus, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
+// import { toast } from 'sonner';
 
 export function WeeklySpecialsBanner() {
   const { t, localized } = useI18n();
@@ -32,8 +32,8 @@ export function WeeklySpecialsBanner() {
     };
 
     addItem(item);
-    const name = localized(dish, 'name');
-    toast.success(`${name} — ${t('cart.add')}`);
+    // const name = localized(dish, 'name');
+    // toast.success(`${name} — ${t('cart.add')}`);
   };
 
   return (

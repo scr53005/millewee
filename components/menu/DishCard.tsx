@@ -7,17 +7,22 @@ import { useCart } from '@/hooks/use-cart';
 import { type MenuDish } from '@/hooks/use-menu';
 import { type CartItemDish } from '@/lib/cart/types';
 import { AllergenIcons } from './AllergenIcons';
+import { AllergenModal } from './AllergenModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronDown, ChevronUp } from 'lucide-react';
-import { toast } from 'sonner';
+import { Plus, ChevronDown, ChevronUp, Info } from 'lucide-react';
+// import { toast } from 'sonner';
+
+export type AllergenDisplayMode = 'inline' | 'modal';
 
 interface DishCardProps {
   dish: MenuDish;
+  allergenDisplay?: AllergenDisplayMode;
 }
 
-export function DishCard({ dish }: DishCardProps) {
+export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const [allergenModalOpen, setAllergenModalOpen] = useState(false);
   const [selectedVariantId, setSelectedVariantId] = useState<number | undefined>(
     dish.has_variants && dish.variants.length > 0 ? dish.variants[0].id : undefined,
   );
@@ -49,7 +54,7 @@ export function DishCard({ dish }: DishCardProps) {
       name_lb: dish.name_lb,
       basePrice: dish.price_eur,
       discount,
-      allergenIcons: allergenInfos.map((a) => a.icon || '⚠'),
+      allergenIcons: allergenInfos.map((a) => a.icon || '\u26a0'),
       imageUrl: dish.image_url,
     };
 
@@ -62,7 +67,7 @@ export function DishCard({ dish }: DishCardProps) {
     }
 
     addItem(item);
-    toast.success(`${name} — ${t('cart.add')}`);
+    // toast.success(`${name} — ${t('cart.add')}`);
   };
 
   // Quick add (collapsed mode, no variants)
@@ -105,7 +110,8 @@ export function DishCard({ dish }: DishCardProps) {
                 {(variantPrice ?? dish.price_eur).toFixed(2)} {'\u20ac'}
               </span>
             )}
-            <AllergenIcons allergens={allergenInfos} />
+            {/* Variant A: inline allergen emojis in collapsed view */}
+            {allergenDisplay === 'inline' && <AllergenIcons allergens={allergenInfos} />}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
@@ -179,16 +185,40 @@ export function DishCard({ dish }: DishCardProps) {
             </div>
           )}
 
-          {/* Add button */}
-          <Button
-            size="sm"
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-            onClick={handleAdd}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {t('cart.add')} — {finalPrice.toFixed(2)} {'\u20ac'}
-          </Button>
+          {/* Add button + allergen info button */}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={handleAdd}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {t('cart.add')} — {finalPrice.toFixed(2)} {'\u20ac'}
+            </Button>
+
+            {/* Variant B: allergen info button in expanded view */}
+            {allergenDisplay === 'modal' && allergenInfos.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0 px-2"
+                onClick={() => setAllergenModalOpen(true)}
+              >
+                <Info className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
+      )}
+
+      {/* Allergen modal (variant B) */}
+      {allergenDisplay === 'modal' && (
+        <AllergenModal
+          open={allergenModalOpen}
+          onOpenChange={(open) => setAllergenModalOpen(open)}
+          allergens={allergenInfos}
+          dishName={name}
+        />
       )}
     </div>
   );

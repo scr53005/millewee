@@ -8,7 +8,7 @@ import { type MenuDrink } from '@/hooks/use-menu';
 import { type CartItemDrink } from '@/lib/cart/types';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { toast } from 'sonner';
+// import { toast } from 'sonner';
 
 interface DrinkCardProps {
   drink: MenuDrink;
@@ -62,7 +62,7 @@ export function DrinkCard({ drink }: DrinkCardProps) {
     };
 
     addItem(item);
-    toast.success(`${name} — ${t('cart.add')}`);
+    // toast.success(`${name} — ${t('cart.add')}`);
   };
 
   return (

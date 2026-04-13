@@ -117,15 +117,24 @@ Customer-facing menu browsing and cart functionality. This is what restaurant gu
 - [x] **Cart sheet** — slide-out sheet with item list, quantity ±, per-item comments (separate placeholders for dishes vs drinks), remove, total, disabled order button ("Payment coming soon"), clear cart
 - [x] **Floating cart button** — fixed FAB showing total price + item count, opens cart sheet
 - [x] **CSS additions** — `.newspaper-texture` (SVG pattern), `.scrollbar-hide` (hidden scrollbar for horizontal scroll)
+- [x] **Allergen A/B testing** — Two menu variants running in parallel:
+  - **Variant A** (`page_A.tsx`): inline allergen emoji icons in collapsed dish card view
+  - **Variant B** (`page_B.tsx`): allergen info button in expanded view, opens `AllergenModal` with emoji + name
+  - Entry page (`page.tsx`) shows landing page with variant toggle buttons
+  - `DishCard.tsx` accepts `allergenDisplay: 'inline' | 'modal'` prop
+  - `AllergenModal.tsx` — small Dialog modal showing allergen details for a dish
+  - `DishesSection.tsx` passes `allergenDisplay` prop through to DishCard
+- [x] **Toast removal** — add-to-cart toasts commented out in DishCard, DrinkCard, WeeklySpecialsBanner (toast import retained as comment for potential re-enablement)
 
 ### Known issues / TODO
 
-- [ ] Language switcher needs testing — was using `onSelect` (Radix pattern) instead of `onClick` (Base UI pattern), fixed but needs verification
 - [ ] Scroll-spy threshold values may need fine-tuning on different screen sizes
 - [ ] No dish/drink images in DB yet — admin UI has `image_url` field but no upload mechanism (Phase 6)
 - [ ] Order button is disabled — payment integration is Phase 4
+- [ ] A/B allergen testing: decide which variant wins, then promote it to `page.tsx` and remove the other
+- [ ] Not yet deployed to production (ready to deploy)
 
-### Files created in Phase 3 (~23 files)
+### Files created in Phase 3 (~26 files)
 
 ```
 lib/i18n/translations.ts                  # FR/EN/LB translation maps (~40 keys)
@@ -140,11 +149,14 @@ app/api/menu/dishes/route.ts              # Public dishes API
 app/api/menu/drinks/route.ts              # Public drinks API
 app/api/menu/specials/route.ts            # Active weekly specials API
 app/(customer)/layout.tsx                  # Customer layout with all providers
-app/(customer)/page.tsx                    # Menu page assembly
+app/(customer)/page.tsx                    # Entry page with A/B variant toggle
+app/(customer)/page_A.tsx                  # Menu variant A (inline allergens)
+app/(customer)/page_B.tsx                  # Menu variant B (modal allergens)
 components/menu/TableDetector.tsx          # Suspense-wrapped TableProvider
 components/menu/MenuHeader.tsx             # Sticky header with logo, lang, cart
 components/menu/AllergenIcons.tsx          # Inline emoji allergen display
-components/menu/DishCard.tsx               # Tap-to-expand dish card
+components/menu/AllergenModal.tsx          # Dialog modal for allergen details
+components/menu/DishCard.tsx               # Tap-to-expand dish card (A/B prop)
 components/menu/DrinkCard.tsx              # Drink card with size/selection pickers
 components/menu/DishesSection.tsx          # Scroll-spy dishes by category
 components/menu/DrinksSection.tsx          # Scroll-spy drinks by category
@@ -155,27 +167,44 @@ components/menu/FloatingCartButton.tsx     # Fixed FAB with total
 
 ---
 
-## Phase 4: Payment Integration (not started)
+## Phase 4+5: Payment Integration + CO Page (planned)
 
-Port the payment state machine from croque-bedaine, integrate with innopay hub.
+Phases 4 and 5 merged — payment and CO page share the `transfers` table and merchant-hub integration; the CO page is needed to validate end-to-end "table to kitchen" flow.
 
-- MiniWallet component
-- All payment flows (Flow 3 guest checkout, Flow 5 account, Flow 6 wallet, Flow 7 savings)
-- Guardrails (L1 account link, L2 pulsing, L3 dedup modal)
-- Payment state machine (useReducer, CB pattern)
-- Wallet notification banner
+**Reference**: Follow `SPOKE-DOCUMENTATION.md` (Next.js + Prisma spoke path). Copy from indiesmenu (backend) + croque-bedaine (state machine style).
 
----
+### Key decisions (April 2026)
 
-## Phase 5: Admin CO Page (not started)
+- **Hive accounts**: PROD = `millewee`, DEV = `innodemo`
+- **Merchant-hub registration**: Add to `merchant-hub/lib/config.ts` (see SPOKE-DOCUMENTATION.md "Merchant-Hub Registration" section)
+- **i18n**: Full trilingual (FR/EN/LB) for all innopay UI strings
+- **Call waiter**: Yes, same as indiesmenu/croque-bedaine
+- **Delayed ordering**: NOT in MVP, but design must accommodate it (keep `CartItem` extensible for `delayedTiming`)
 
-Kitchen/service current orders page.
+### Payment integration tasks
 
-- Merchant-hub registration (Redis streams)
-- Real-time order display via polling
-- Fulfill/unfulfill actions
-- Bell sounds for new orders
-- Print support
+- [ ] Merchant-hub registration (`merchant-hub/lib/config.ts` + env vars + deploy)
+- [ ] `transfers` model in Prisma schema + migration
+- [ ] Environment config (`lib/environment.ts` — `isPrivateNetwork()`, `EnvironmentConfig`)
+- [ ] Innopay utility files (`lib/innopay/utils.ts`, `hive.ts`, `config.ts`)
+- [ ] Payment state machine (`state/innopay/paymentStateMachine.ts`)
+- [ ] Payment hooks (`hooks/innopay/usePaymentFlow.ts`, `useInnopayCart.ts`, `useBalance.ts`)
+- [ ] UI components (`components/innopay/Draggable.tsx`, `MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`)
+- [ ] All payment flows (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import)
+- [ ] Guardrails (L1 account link, L2 pulsing, L3 dedup modal)
+- [ ] Flow 6 cooldown (12s post-payment)
+- [ ] Cart integration — wire CartSheet order button to `usePaymentFlow`
+- [ ] Trilingual innopay translation keys in `lib/i18n/translations.ts`
+- [ ] Env vars on Vercel (`NEXT_PUBLIC_HUB_URL`, `NEXT_PUBLIC_MERCHANT_HUB_URL`, `NEXT_PUBLIC_HIVE_ACCOUNT`, `NEXT_PUBLIC_RESTAURANT_ID`)
+
+### CO page tasks
+
+- [ ] API routes (`/api/transfers/sync-from-merchant-hub`, `/api/transfers/unfulfilled`, `/api/fulfill`, `/api/balance/euro`, `/api/check-mine`)
+- [ ] Admin CO page (`app/admin/current_orders/page.tsx`)
+- [ ] Merchant-hub polling + Redis stream consumption
+- [ ] Order display with memo hydration
+- [ ] Fulfill workflow
+- [ ] Bell sounds for new orders
 
 ---
 
