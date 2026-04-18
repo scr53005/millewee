@@ -22,6 +22,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
+import { useWalletPulse } from '@/hooks/use-wallet-pulse';
 import { useInnopayCart } from '@/hooks/innopay/useInnopayCart';
 import { usePaymentFlow } from '@/hooks/innopay/usePaymentFlow';
 import { useBalance } from '@/hooks/innopay/useBalance';
@@ -60,6 +61,7 @@ interface CartSheetProps {
 export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { language, t } = useI18n();
   const { items, removeItem, updateQuantity, updateComment, clearCart, totalPrice } = useCart();
+  const { startOrderPulsing } = useWalletPulse();
   const { table, getMemo } = useInnopayCart();
 
   // Read account name once and keep it reactive across tabs via the storage event
@@ -407,6 +409,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         }}
         onGuestCheckout={handleGuestCheckout}
         onCreateAccount={handleCreateAccount}
+        onExternalWalletRedirect={startOrderPulsing}
         isCallWaiterFlow={isCallWaiterFlow}
         language={language}
       />

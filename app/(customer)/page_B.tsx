@@ -12,14 +12,18 @@ import { UtensilsCrossed, Wine } from 'lucide-react';
 
 type MenuTab = 'dishes' | 'drinks';
 
-export function MenuPageB() {
+interface MenuPageBProps {
+  onToggleVariant?: () => void;
+}
+
+export function MenuPageB({ onToggleVariant }: MenuPageBProps = {}) {
   const [cartOpen, setCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MenuTab>('dishes');
   const { t } = useI18n();
 
   return (
     <div className="min-h-screen bg-background">
-      <MenuHeader onCartOpen={() => setCartOpen(true)} />
+      <MenuHeader onCartOpen={() => setCartOpen(true)} onLogoClick={onToggleVariant} />
 
       {/* Dishes / Drinks toggle */}
       <div className="sticky top-[57px] z-25 bg-background/95 backdrop-blur-sm border-b border-border">
@@ -50,9 +54,11 @@ export function MenuPageB() {
       </div>
 
       <main className="max-w-4xl mx-auto pb-20">
-        <WeeklySpecialsBanner />
         {activeTab === 'dishes' ? (
-          <DishesSection allergenDisplay="modal" />
+          <>
+            <WeeklySpecialsBanner />
+            <DishesSection allergenDisplay="modal" />
+          </>
         ) : (
           <DrinksSection />
         )}

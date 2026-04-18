@@ -29,8 +29,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Bell, BellOff, Home, LogOut, Loader2, VolumeX, Volume2 } from 'lucide-react';
-import Link from 'next/link';
+import { Bell, BellOff, LogOut, Loader2, VolumeX, Volume2 } from 'lucide-react';
+import { AdminHeader } from '@/components/admin/AdminHeader';
 import {
   hydrateMemo,
   extractDistriateIdentifier,
@@ -236,7 +236,8 @@ export default function CurrentOrdersPage() {
         if (syncData.inserted > 0) {
           toast(`${syncData.inserted} nouvelle(s) commande(s)`);
         }
-        setSyncInfo(`Sync: ${syncData.inserted || 0} new, ${syncData.acked || 0} acked`);
+        // Dev-only diagnostic; skipping the setState in prod avoids a pointless re-render every 6s.
+        if (isDev) setSyncInfo(`Sync: ${syncData.inserted || 0} new, ${syncData.acked || 0} acked`);
       }
 
       const unfulRes = await fetch('/api/transfers/unfulfilled');
@@ -275,7 +276,18 @@ export default function CurrentOrdersPage() {
       });
 
       previousIdsRef.current = currentIds;
-      setTransfers(hydrated);
+      // Skip the setState (and the resulting full-list re-render) when the poll
+      // returned the same set of transfers in the same order — which is the common
+      // case every 6s. Cuts dev-mode reconciliation cost dramatically.
+      setTransfers((prev) => {
+        if (
+          prev.length === hydrated.length &&
+          prev.every((p, i) => p.id === hydrated[i].id && p.memo === hydrated[i].memo)
+        ) {
+          return prev;
+        }
+        return hydrated;
+      });
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -376,31 +388,27 @@ export default function CurrentOrdersPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4">
-      <header className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <h1 className="text-xl font-semibold text-gray-900">Commandes en cours</h1>
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant={audioOn ? 'secondary' : 'default'}
-            onClick={toggleAudio}
-            className={audioOn ? '' : 'bg-[#8B0000] hover:bg-[#600000] text-white'}
-          >
-            {audioOn ? <BellOff className="h-4 w-4 mr-1" /> : <Bell className="h-4 w-4 mr-1" />}
-            {audioOn ? 'Couper le son' : 'Activer le son'}
-          </Button>
-          <Link href="/admin">
-            <Button size="sm" variant="ghost">
-              <Home className="h-4 w-4 mr-1" />
-              Tableau
+    <div>
+      <AdminHeader />
+      <div className="max-w-4xl mx-auto p-4">
+        <header className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h1 className="text-xl font-semibold text-gray-900">Commandes en cours</h1>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant={audioOn ? 'secondary' : 'default'}
+              onClick={toggleAudio}
+              className={audioOn ? '' : 'bg-[#8B0000] hover:bg-[#600000] text-white'}
+            >
+              {audioOn ? <BellOff className="h-4 w-4 mr-1" /> : <Bell className="h-4 w-4 mr-1" />}
+              {audioOn ? 'Couper le son' : 'Activer le son'}
             </Button>
-          </Link>
-          <Button size="sm" variant="ghost" onClick={handleLogout}>
-            <LogOut className="h-4 w-4 mr-1" />
-            Sortir
-          </Button>
-        </div>
-      </header>
+            <Button size="sm" variant="ghost" onClick={handleLogout}>
+              <LogOut className="h-4 w-4 mr-1" />
+              Sortir
+            </Button>
+          </div>
+        </header>
 
       {error && (
         <div className="bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded mb-3 text-sm">
@@ -441,7 +449,7 @@ export default function CurrentOrdersPage() {
           const cardClass = primary.isCallWaiter
             ? 'bg-red-50 border-red-500 border-2 animate-pulse'
             : isLate
-              ? 'bg-amber-50 border-amber-400 border-2'
+              ? 'bg-red-100 border-red-400 border-2'
               : 'bg-white border-gray-200 border';
 
           return (
@@ -560,6 +568,17 @@ export default function CurrentOrdersPage() {
                           }
                           return next;
                         });
+                        // Unmuting: confirm audibly + reset each reminder cycle so the
+                        // next auto-ring is 30s from now, not some partial leftover phase.
+                        if (groupMuted) {
+                          ringBellNow();
+                          for (const id of allIds) {
+                            const old = reminderTimersRef.current.get(id);
+                            if (old) clearInterval(old);
+                            const handle = setInterval(() => ringBellForOrder(id), REMINDER_MS);
+                            reminderTimersRef.current.set(id, handle);
+                          }
+                        }
                       }}
                       aria-label={groupMuted ? 'Reactiver le son pour cette commande' : 'Couper le son pour cette commande'}
                       title={groupMuted ? 'Reactiver le son' : 'Couper le son'}
@@ -577,6 +596,7 @@ export default function CurrentOrdersPage() {
           );
         })}
       </ul>
+      </div>
     </div>
   );
 }

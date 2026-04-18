@@ -13,9 +13,13 @@
 
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import Draggable from './Draggable';
-import { getInnopayUrl, getHiveAccount, generateDistriatedHiveOp } from '@/lib/innopay/utils';
+import {
+  getHiveAccount,
+  generateDistriatedHiveOp,
+  storeMemoBeforeOrder,
+} from '@/lib/innopay/utils';
 
 interface WalletNotificationBannerProps {
   visible: boolean;
@@ -26,6 +30,13 @@ interface WalletNotificationBannerProps {
   onImportAccount: () => void;
   onGuestCheckout: () => void;
   onCreateAccount: () => void;
+  /**
+   * Called the moment the user confirms the external-wallet warning and we're
+   * about to navigate to the hive:// URL. Fires AFTER storeMemoBeforeOrder has
+   * persisted the memo prefix to localStorage, so the parent can kick off
+   * pulse polling immediately.
+   */
+  onExternalWalletRedirect?: () => void;
   isCallWaiterFlow?: boolean;
   isSafariBanner?: boolean;
   language?: 'fr' | 'en' | 'lb';
@@ -42,6 +53,7 @@ export default function WalletNotificationBanner({
   onImportAccount,
   onGuestCheckout,
   onCreateAccount,
+  onExternalWalletRedirect,
   isCallWaiterFlow = false,
   isSafariBanner = false,
   language = 'fr',
@@ -52,6 +64,10 @@ export default function WalletNotificationBanner({
   const [pendingHiveUrl, setPendingHiveUrl] = useState('');
   const [freeNowOpened, setFreeNowOpened] = useState(false);
   const [guestCheckoutClicked, setGuestCheckoutClicked] = useState(false);
+  // Full memo (base + distriate suffix) for the pending external-wallet order.
+  // Held in a ref so proceedWithExternalWallet can persist it to LS right
+  // before the hive:// redirect — that's the point of no return for the order.
+  const pendingMemoRef = useRef<string>('');
 
   const translations = {
     fr: {
@@ -121,7 +137,7 @@ export default function WalletNotificationBanner({
 
   const t = translations[language] || translations.fr;
 
-  const generateHiveUrl = useCallback(() => {
+  const generateHiveOp = useCallback(() => {
     const recipient = getHiveAccount();
     const memo = isCallWaiterFlow
       ? `Un serveur est appele TABLE ${table}`
@@ -142,11 +158,12 @@ export default function WalletNotificationBanner({
     }
 
     console.log('[EXTERNAL WALLET] User requested external wallet - showing warning modal');
-    const hiveOpUrl = generateHiveUrl();
-    setPendingHiveUrl(hiveOpUrl);
+    const { url, memo } = generateHiveOp();
+    setPendingHiveUrl(url);
+    pendingMemoRef.current = memo;
     setFreeNowOpened(false);
     setShowExternalWalletWarning(true);
-  }, [cartTotal, isCallWaiterFlow, generateHiveUrl, t.nothingToOrder]);
+  }, [cartTotal, isCallWaiterFlow, generateHiveOp, t.nothingToOrder]);
 
   const proceedWithExternalWallet = useCallback(() => {
     if (!pendingHiveUrl) return;
@@ -181,6 +198,17 @@ export default function WalletNotificationBanner({
     window.addEventListener('blur', blurHandler);
     window.addEventListener('focus', focusHandler);
 
+    // Commitment point: persist the memo prefix to LS, notify the parent to
+    // kick off pulse polling, then redirect. Order matters — if any step
+    // below throws, the memo is already stored and the pulse hook will pick
+    // it up on next mount.
+    try {
+      storeMemoBeforeOrder(pendingMemoRef.current);
+      onExternalWalletRedirect?.();
+    } catch (err) {
+      console.warn('[EXTERNAL WALLET] Pre-redirect hooks threw:', err);
+    }
+
     try {
       window.location.href = pendingHiveUrl;
     } catch (error) {
@@ -197,7 +225,7 @@ export default function WalletNotificationBanner({
         setFreeNowOpened(true);
       }
     }, 3000);
-  }, [pendingHiveUrl, onClose]);
+  }, [pendingHiveUrl, onClose, onExternalWalletRedirect]);
 
   const copyHiveUrlToClipboard = useCallback(async () => {
     if (!pendingHiveUrl) return;
@@ -262,7 +290,7 @@ export default function WalletNotificationBanner({
               onTouchStart={(e) => e.stopPropagation()}
             >
               <span>{t.createAccount}</span>
-              <img src="/favicon-48x48.png" alt="innopay" className="w-10 h-10" />
+              <img src="/images/favicon-48x48.png" alt="innopay" className="w-10 h-10" />
             </button>
 
             <button

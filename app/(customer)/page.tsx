@@ -13,8 +13,10 @@ export default function Home() {
   const [variant, setVariant] = useState<Variant>(null);
   const { t } = useI18n();
 
-  if (variant === 'A') return <MenuPageA />;
-  if (variant === 'B') return <MenuPageB />;
+  const toggleVariant = () => setVariant((v) => (v === 'A' ? 'B' : 'A'));
+
+  if (variant === 'A') return <MenuPageA onToggleVariant={toggleVariant} />;
+  if (variant === 'B') return <MenuPageB onToggleVariant={toggleVariant} />;
 
   return (
     <div className="min-h-screen flex flex-col items-center gap-8 p-6">

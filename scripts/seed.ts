@@ -272,13 +272,24 @@ async function seedDrinks() {
     // - If Détails has " / " separated values AND no Format → selections (e.g., Soda: Cola / Cola Zero)
     // - If Détails has " ou " → selections (e.g., Fuze Tea: Pêche ou Mangue)
     // - If Format has " / " → multiple sizes
-    const hasMultipleSizes = !!format && format.includes("/");
+    //   NOTE: we match `/` only when surrounded by whitespace, so fractions like
+    //   "verre / 1/4 / 1/2 / Bouteille" split into 4 tokens, not 7.
+    const SIZE_SEP = /\s+\/\s+/;
+    const hasMultipleSizes = !!format && SIZE_SEP.test(format);
     const hasSelections = !!details && details !== "-" && (details.includes(" / ") || details.includes(" ou "));
 
-    // Determine selection_mode
+    // "Variant" vs "selection" — semantic distinction for the admin badge:
+    //   - variant: choice changes the product identity (Bombay gin ≠ Hendricks gin,
+    //     or pizza Margherita + Bouteille size). Prices differ across choices OR
+    //     there's also a size dimension.
+    //   - selection: same product, flavor pick with flat price (Cola / Fanta).
     let selectionMode: string | null = null;
-    if (hasSelections && !hasMultipleSizes) selectionMode = "selection";
-    else if (hasSelections && hasMultipleSizes) selectionMode = "variant";
+    if (hasSelections) {
+      const priceCount = priceStr ? priceStr.split(SIZE_SEP).length : 0;
+      const detailCount = details.split(/\s*(?:\/|ou)\s*/).filter(Boolean).length;
+      const selectionsArePriced = priceCount > 1 && priceCount === detailCount && !hasMultipleSizes;
+      selectionMode = hasMultipleSizes || selectionsArePriced ? "variant" : "selection";
+    }
 
     const drink = await prisma.drink.create({
       data: {
@@ -294,9 +305,18 @@ async function seedDrinks() {
       data: { category_id: categoryId, drink_id: drink.drink_id },
     });
 
-    // Parse sizes and prices
-    const prices = priceStr ? priceStr.split("/").map((p) => p.trim()) : [];
-    const sizes = format ? format.split("/").map((s) => s.trim()) : [];
+    // Parse sizes and prices — split on the same whitespace-hugged `/` separator.
+    const prices = priceStr ? priceStr.split(SIZE_SEP).map((p) => p.trim()) : [];
+    const sizes = format ? format.split(SIZE_SEP).map((s) => s.trim()) : [];
+
+    // Parse selection items up front so the size/price branches can use them
+    // (e.g. "Bombay ou Hendricks" → ["Bombay", "Hendricks"]).
+    const selItems: string[] = hasSelections
+      ? details.split(/\s*(?:\/|ou)\s*/).map((s) => s.trim()).filter(Boolean)
+      : [];
+
+    // Per-selection price deltas, populated only by the selection-priced branch.
+    const selectionDeltas: number[] = [];
 
     if (sizes.length > 0 && prices.length === sizes.length) {
       // Multiple sizes with corresponding prices
@@ -309,6 +329,24 @@ async function seedDrinks() {
           sizeCount++;
         }
       }
+    } else if (
+      sizes.length === 0 &&
+      selItems.length > 1 &&
+      prices.length === selItems.length
+    ) {
+      // Selection-priced drink (e.g. Gin: "Bombay ou Hendricks" @ "6.80 / 8.50").
+      // No size dimension, but each selection has its own price. We store the
+      // cheapest as a base "standard" drink_size and bake the differences into
+      // each selection's price_delta — functionally the same as a dish variant.
+      const parsed = prices.map((p) => parseFloat(p.replace(",", ".")));
+      if (parsed.every((n) => !isNaN(n))) {
+        const basePrice = Math.min(...parsed);
+        await prisma.drink_size.create({
+          data: { drink_id: drink.drink_id, size: "standard", price_eur: basePrice },
+        });
+        sizeCount++;
+        for (const p of parsed) selectionDeltas.push(p - basePrice);
+      }
     } else if (prices.length === 1 || (prices.length === 0 && priceStr)) {
       // Single price, standard size
       const p = parseFloat((prices[0] || priceStr).replace(",", "."));
@@ -320,14 +358,14 @@ async function seedDrinks() {
       }
     }
 
-    // Parse selections from Détails
+    // Create selections, attaching per-item deltas if we computed them.
     if (hasSelections) {
-      const selItems = details.split(/\s*(?:\/|ou)\s*/).filter(Boolean);
       for (let si = 0; si < selItems.length; si++) {
         await prisma.drink_selection.create({
           data: {
             drink_id: drink.drink_id,
-            name_fr: selItems[si].trim(),
+            name_fr: selItems[si],
+            price_delta: selectionDeltas[si] ?? 0,
             sort_order: si + 1,
           },
         });

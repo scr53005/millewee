@@ -15,32 +15,50 @@ import { ShoppingBag } from 'lucide-react';
 
 interface MenuHeaderProps {
   onCartOpen: () => void;
+  /** Optional: when provided, tapping the logo/title toggles the A/B variant. */
+  onLogoClick?: () => void;
 }
 
-export function MenuHeader({ onCartOpen }: MenuHeaderProps) {
+export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
   const { language, setLanguage, t } = useI18n();
   const { tableNumber } = useTable();
   const { totalItems } = useCart();
 
   const currentLang = languages.find((l) => l.code === language)!;
 
+  const LogoBlock = (
+    <>
+      <div className="relative w-10 h-10 shrink-0">
+        <Image
+          src="/images/logo_millewee_transp.png"
+          alt="Millewee"
+          fill
+          sizes="40px"
+          className="object-contain dark:brightness-0 dark:invert"
+          priority
+        />
+      </div>
+      <span className="font-display text-2xl font-bold text-foreground">Millewee</span>
+    </>
+  );
+
   return (
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="flex items-center justify-between px-3 py-2 max-w-4xl mx-auto">
-        {/* Logo + title */}
-        <div className="flex items-center gap-2">
-          <div className="relative w-10 h-10 shrink-0">
-            <Image
-              src="/images/logo_millewee_transp.png"
-              alt="Millewee"
-              fill
-              sizes="40px"
-              className="object-contain dark:brightness-0 dark:invert"
-              priority
-            />
-          </div>
-          <span className="font-display text-2xl font-bold text-foreground">Millewee</span>
-        </div>
+        {/* Logo + title — tappable when onLogoClick is provided (A/B toggle) */}
+        {onLogoClick ? (
+          <button
+            type="button"
+            onClick={onLogoClick}
+            className="flex items-center gap-2 rounded-md -m-1 p-1 hover:bg-muted/60 transition-colors"
+            aria-label="Changer de variante d'affichage"
+            title="Changer de variante d'affichage"
+          >
+            {LogoBlock}
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">{LogoBlock}</div>
+        )}
 
         {/* Right side controls */}
         <div className="flex items-center gap-1.5">

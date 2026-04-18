@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import MiniWallet, { WalletReopenButton } from './MiniWallet';
 import BottomBanner from './BottomBanner';
 import { useBalance } from '@/hooks/innopay/useBalance';
+import { useWalletPulse } from '@/hooks/use-wallet-pulse';
 import { useI18n } from '@/lib/i18n';
 
 const WALLET_HIDDEN_KEY = 'innopay_wallet_hidden';
@@ -32,6 +33,7 @@ export function InnopayChrome() {
   }, []);
 
   const { balance, source } = useBalance(accountName, { enabled: !!accountName });
+  const { pulseState, resetPulse } = useWalletPulse();
 
   const handleClose = () => {
     localStorage.setItem(WALLET_HIDDEN_KEY, '1');
@@ -56,6 +58,8 @@ export function InnopayChrome() {
           visible
           title={t('wallet.title')}
           balanceSource={source ?? undefined}
+          pulseState={pulseState}
+          onPulseReset={resetPulse}
         />
       )}
       {!!accountName && walletHidden && (

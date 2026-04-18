@@ -219,6 +219,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 ### Remaining
 
+- [ ] **BUG: Flow 3 success banner does not appear on return** from Stripe checkout — after a successful Flow 3 payment, the customer is redirected back to the restaurant menu but the unified success banner does not show. Needs investigation (likely: the return-URL query param handling in the payment state machine is not firing, or the banner is rendered but dismissed too quickly, or the state machine isn't being fed the `?payment=success` — to be confirmed)
 - [ ] Exercise Flows 4, 5, 6, 7, 8 end-to-end
 - [ ] Test call-waiter, dedup modal, per-order mute, 30s reminder, wake-up, fulfill, late threshold
 - [ ] Merchant-hub dashboard card for Millewee (`merchant-hub/app/page.tsx` currently only shows Indie + CB)
