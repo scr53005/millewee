@@ -53,9 +53,50 @@ export const translations = {
     // Table
     'table.label': 'Table',
 
+    // Innopay Wallet
+    'wallet.title': 'Votre portefeuille Innopay',
+    'wallet.view': 'Voir portefeuille',
+    'wallet.close': 'Fermer',
+    'wallet.balance': 'Solde',
+    'wallet.account': 'Compte',
+
+    // Call Waiter
+    'waiter.call': 'Appeler le serveur',
+    'waiter.calling': 'Appel en cours...',
+    'waiter.reasonTitle': 'Raison de l\'appel',
+    'waiter.reasonPlaceholder': 'Ex: l\'addition, une carafe d\'eau...',
+    'waiter.reasonOptional': '(optionnel)',
+    'waiter.send': 'Envoyer',
+    'waiter.cancel': 'Annuler',
+    'waiter.called': 'Serveur appele !',
+
+    // Payment (parent-level)
+    'payment.title': 'Paiement',
+    'payment.processing': 'Paiement en cours...',
+    'payment.success': 'Commande transmise !',
+    'payment.failed': 'Paiement echoue',
+    'payment.retry': 'Reessayer',
+    'payment.cancel': 'Annuler',
+    'payment.chooseFlow': 'Comment voulez-vous payer ?',
+    'payment.duplicateTitle': 'Commande deja passee ?',
+    'payment.duplicateMessage': 'Une commande identique a deja ete envoyee recemment.',
+    'payment.duplicateConfirm': 'Oui, envoyer quand meme',
+    'payment.duplicateCancel': 'Non, annuler',
+
+    // Account
+    'account.created': 'Compte cr\u00e9\u00e9 !',
+
     // Misc
     'misc.loading': 'Chargement...',
     'misc.error': 'Erreur de chargement',
+
+    // Landing (variant selector)
+    'landing.tagline': 'Sp\u00e9cialit\u00e9s de burgers et plats du jour — Luxembourg',
+    'landing.variantA': 'Voir le menu — Variante A',
+    'landing.variantAHint': 'Allerg\u00e8nes en ligne',
+    'landing.variantB': 'Voir le menu — Variante B',
+    'landing.variantBHint': 'Allerg\u00e8nes dans un modal',
+    'landing.themeHint': 'Basculez le mode clair/sombre via le bouton en haut \u00e0 droite',
   },
   en: {
     // Header
@@ -111,9 +152,50 @@ export const translations = {
     // Table
     'table.label': 'Table',
 
+    // Innopay Wallet
+    'wallet.title': 'Your Innopay wallet',
+    'wallet.view': 'View wallet',
+    'wallet.close': 'Close',
+    'wallet.balance': 'Balance',
+    'wallet.account': 'Account',
+
+    // Call Waiter
+    'waiter.call': 'Call waiter',
+    'waiter.calling': 'Calling...',
+    'waiter.reasonTitle': 'Reason for the call',
+    'waiter.reasonPlaceholder': 'E.g. the bill, a jug of water...',
+    'waiter.reasonOptional': '(optional)',
+    'waiter.send': 'Send',
+    'waiter.cancel': 'Cancel',
+    'waiter.called': 'Waiter called!',
+
+    // Payment (parent-level)
+    'payment.title': 'Payment',
+    'payment.processing': 'Processing payment...',
+    'payment.success': 'Order sent!',
+    'payment.failed': 'Payment failed',
+    'payment.retry': 'Retry',
+    'payment.cancel': 'Cancel',
+    'payment.chooseFlow': 'How would you like to pay?',
+    'payment.duplicateTitle': 'Already ordered?',
+    'payment.duplicateMessage': 'An identical order has already been sent recently.',
+    'payment.duplicateConfirm': 'Yes, send anyway',
+    'payment.duplicateCancel': 'No, cancel',
+
+    // Account
+    'account.created': 'Account created!',
+
     // Misc
     'misc.loading': 'Loading...',
     'misc.error': 'Loading error',
+
+    // Landing (variant selector)
+    'landing.tagline': 'Burger specialties and daily specials — Luxembourg',
+    'landing.variantA': 'View the menu — Variant A',
+    'landing.variantAHint': 'Allergens shown inline',
+    'landing.variantB': 'View the menu — Variant B',
+    'landing.variantBHint': 'Allergens shown in a modal',
+    'landing.themeHint': 'Toggle dark/light mode with the button in the top-right corner',
   },
   lb: {
     // Header
@@ -169,9 +251,50 @@ export const translations = {
     // Table
     'table.label': 'Dësch',
 
+    // Innopay Wallet
+    'wallet.title': 'Äre Innopay Portmonni',
+    'wallet.view': 'Portmonni kucken',
+    'wallet.close': 'Zoumaachen',
+    'wallet.balance': 'Solde',
+    'wallet.account': 'Kont',
+
+    // Call Waiter
+    'waiter.call': 'Kellner ruffen',
+    'waiter.calling': 'Gëtt geruff...',
+    'waiter.reasonTitle': 'Grond vum Uruff',
+    'waiter.reasonPlaceholder': 'Z.B. d\'Rechnung, eng Karaff Waasser...',
+    'waiter.reasonOptional': '(fakultativ)',
+    'waiter.send': 'Schécken',
+    'waiter.cancel': 'Ofbriechen',
+    'waiter.called': 'Kellner geruff!',
+
+    // Payment (parent-level)
+    'payment.title': 'Bezuelung',
+    'payment.processing': 'Bezuelung leeft...',
+    'payment.success': 'Bestellung geschéckt!',
+    'payment.failed': 'Bezuelung feelgeschloen',
+    'payment.retry': 'Nach eng Kéier probéieren',
+    'payment.cancel': 'Ofbriechen',
+    'payment.chooseFlow': 'Wéi wëllt Dir bezuelen?',
+    'payment.duplicateTitle': 'Scho bestallt?',
+    'payment.duplicateMessage': 'Eng identesch Bestellung gouf rezent scho geschéckt.',
+    'payment.duplicateConfirm': 'Jo, trotzdeem schécken',
+    'payment.duplicateCancel': 'Nee, ofbriechen',
+
+    // Account
+    'account.created': 'Kont erstallt!',
+
     // Misc
     'misc.loading': 'Lueden...',
     'misc.error': 'Feeler beim Lueden',
+
+    // Landing (variant selector)
+    'landing.tagline': 'Burger-Spezialit\u00e9iten a Platen vum Dag — Lëtzebuerg',
+    'landing.variantA': 'Menu kucken — Variant A',
+    'landing.variantAHint': 'Allergenen direkt ugewisen',
+    'landing.variantB': 'Menu kucken — Variant B',
+    'landing.variantBHint': 'Allergenen an engem Modal',
+    'landing.themeHint': 'Wiesselt den hellen/donkelen Modus uewen riets',
   },
 } as const;
 

@@ -214,25 +214,6 @@ model live_event {
   created_at   DateTime @default(now())
 }
 
-// ─── Transfers (blockchain order tracking) ───
-
-model transfer {
-  id           String    @id
-  from_account String
-  to_account   String
-  amount       String
-  symbol       String    @default("HBD")
-  memo         String
-  parsed_memo  String?
-  received_at  DateTime
-  fulfilled    Boolean   @default(false)
-  fulfilled_at DateTime?
-  created_at   DateTime  @default(now())
-
-  @@index([received_at(sort: Desc)], map: "idx_transfers_unfulfilled")
-  @@index([to_account])
-}
-
 // ─── Admin ───
 
 model admin_session {
@@ -246,4 +227,21 @@ model admin_session {
 model restaurant_table {
   table_number Int    @id
   location     String @default("intérieur") // "intérieur" | "terrasse"
+}
+
+// ─── Innopay: Transfers ───
+// Mirrors the Redis stream written by merchant-hub. One row per Hive/Hive-Engine
+// transfer received by our restaurant account.
+
+model transfers {
+  id           BigInt    @id
+  from_account String
+  to_account   String    @default("millewee")
+  amount       String
+  symbol       String
+  memo         String?
+  parsed_memo  String?
+  fulfilled    Boolean?  @default(false)
+  received_at  DateTime? @default(now()) @db.Timestamptz(6)
+  fulfilled_at DateTime? @db.Timestamptz(6)
 }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useI18n } from '@/lib/i18n';
 import { MenuPageA } from './page_A';
 import { MenuPageB } from './page_B';
 
@@ -10,6 +11,7 @@ type Variant = null | 'A' | 'B';
 
 export default function Home() {
   const [variant, setVariant] = useState<Variant>(null);
+  const { t } = useI18n();
 
   if (variant === 'A') return <MenuPageA />;
   if (variant === 'B') return <MenuPageB />;
@@ -26,8 +28,9 @@ export default function Home() {
         <div className="relative w-48 h-48">
           <Image
             src="/images/logo_millewee_transp.png"
-            alt={`Caf\u00e9-Brasserie Millewee`}
+            alt="Caf\u00e9-Brasserie Millewee"
             fill
+            sizes="192px"
             className="object-contain dark:brightness-0 dark:invert"
             priority
           />
@@ -49,7 +52,7 @@ export default function Home() {
         Caf{'\u00e9'}-Brasserie Millewee
       </h1>
       <p className="text-muted-foreground text-center max-w-md">
-        Sp{'\u00e9'}cialit{'\u00e9'}s de burgers et plats du jour — Luxembourg
+        {t('landing.tagline')}
       </p>
 
       {/* A/B variant selector */}
@@ -58,20 +61,20 @@ export default function Home() {
           onClick={() => setVariant('A')}
           className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
         >
-          Voir le menu — Variante A
-          <span className="block text-xs opacity-75 mt-0.5">Allerg{'\u00e8'}nes en ligne</span>
+          {t('landing.variantA')}
+          <span className="block text-xs opacity-75 mt-0.5">{t('landing.variantAHint')}</span>
         </button>
         <button
           onClick={() => setVariant('B')}
           className="bg-secondary text-secondary-foreground px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
         >
-          Voir le menu — Variante B
-          <span className="block text-xs opacity-75 mt-0.5">Allerg{'\u00e8'}nes dans un modal</span>
+          {t('landing.variantB')}
+          <span className="block text-xs opacity-75 mt-0.5">{t('landing.variantBHint')}</span>
         </button>
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
-        Toggle dark/light mode with the button in the top-right corner
+        {t('landing.themeHint')}
       </p>
     </div>
   );

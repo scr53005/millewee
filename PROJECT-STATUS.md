@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-04-13
+**Last updated**: 2026-04-18
 
 ---
 
@@ -167,44 +167,63 @@ components/menu/FloatingCartButton.tsx     # Fixed FAB with total
 
 ---
 
-## Phase 4+5: Payment Integration + CO Page (planned)
+## Phase 4+5: Payment Integration + CO Page — CODE COMPLETE, TESTING PARTIAL
 
-Phases 4 and 5 merged — payment and CO page share the `transfers` table and merchant-hub integration; the CO page is needed to validate end-to-end "table to kitchen" flow.
+Phases 4 and 5 merged — payment and CO page share the `transfers` table and merchant-hub integration; the CO page validates the end-to-end "table to kitchen" flow.
 
-**Reference**: Follow `SPOKE-DOCUMENTATION.md` (Next.js + Prisma spoke path). Copy from indiesmenu (backend) + croque-bedaine (state machine style).
+**Reference**: Followed `SPOKE-DOCUMENTATION.md` (Next.js + Prisma spoke path). Backend patterns copied from indiesmenu, state-machine style from croque-bedaine.
+
+> **⚠️ Testing status (2026-04-18)**: Only **Flow 3 (guest checkout)** has been exercised end-to-end so far (phone → hub → Stripe test card → webhook → HBD transfer → merchant-hub → CO page). Flows 4, 5, 6, 7, 8 are wired but **not yet tested**. Call-waiter, duplicate-order modal, pulsing guardrails, per-order mute, 30s reminder, merchant-hub wake-up, fulfill, and delayed-order data-model extensibility are also **not yet exercised**. Significant testing remains before a real-world deploy.
 
 ### Key decisions (April 2026)
 
 - **Hive accounts**: PROD = `millewee`, DEV = `innodemo`
-- **Merchant-hub registration**: Add to `merchant-hub/lib/config.ts` (see SPOKE-DOCUMENTATION.md "Merchant-Hub Registration" section)
+- **Merchant-hub registration**: added in `merchant-hub/lib/config.ts`. Env vars `MILLEWEE_ACCOUNT` / `MILLEWEE_DEV_ACCOUNT` on the (prod-only) merchant-hub Vercel project
 - **i18n**: Full trilingual (FR/EN/LB) for all innopay UI strings
-- **Call waiter**: Yes, same as indiesmenu/croque-bedaine
-- **Delayed ordering**: NOT in MVP, but design must accommodate it (keep `CartItem` extensible for `delayedTiming`)
+- **Call waiter**: Yes, same as indiesmenu/croque-bedaine, red pulsing card on CO page
+- **Delayed ordering**: NOT in MVP, but `CartItem` is extensible for `delayedTiming` when needed
 
-### Payment integration tasks
+### Payment integration — implemented
 
-- [ ] Merchant-hub registration (`merchant-hub/lib/config.ts` + env vars + deploy)
-- [ ] `transfers` model in Prisma schema + migration
-- [ ] Environment config (`lib/environment.ts` — `isPrivateNetwork()`, `EnvironmentConfig`)
-- [ ] Innopay utility files (`lib/innopay/utils.ts`, `hive.ts`, `config.ts`)
-- [ ] Payment state machine (`state/innopay/paymentStateMachine.ts`)
-- [ ] Payment hooks (`hooks/innopay/usePaymentFlow.ts`, `useInnopayCart.ts`, `useBalance.ts`)
-- [ ] UI components (`components/innopay/Draggable.tsx`, `MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`)
-- [ ] All payment flows (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import)
-- [ ] Guardrails (L1 account link, L2 pulsing, L3 dedup modal)
-- [ ] Flow 6 cooldown (12s post-payment)
-- [ ] Cart integration — wire CartSheet order button to `usePaymentFlow`
-- [ ] Trilingual innopay translation keys in `lib/i18n/translations.ts`
-- [ ] Env vars on Vercel (`NEXT_PUBLIC_HUB_URL`, `NEXT_PUBLIC_MERCHANT_HUB_URL`, `NEXT_PUBLIC_HIVE_ACCOUNT`, `NEXT_PUBLIC_RESTAURANT_ID`)
+- [x] Merchant-hub registration (`merchant-hub/lib/config.ts` + env vars on Vercel)
+- [x] `transfers` model in Prisma schema + migration
+- [x] Environment config (`lib/environment.ts` — `isPrivateNetwork()`, `EnvironmentConfig`)
+- [x] Innopay utility files (`lib/innopay/utils.ts`, `hive.ts`, `config.ts`)
+- [x] Payment state machine (`state/innopay/paymentStateMachine.ts`)
+- [x] Payment hooks (`hooks/innopay/usePaymentFlow.ts`, `useInnopayCart.ts`, `useBalance.ts`)
+- [x] UI components (`MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`, `WalletReopenButton.tsx`)
+- [x] `InnopayChrome.tsx` — host for MiniWallet + WalletReopenButton + BottomBanner, wired into customer layout
+- [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **only Flow 3 tested so far**
+- [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **not yet tested**
+- [x] Flow 6 cooldown (12s post-payment) — implemented, **not yet tested**
+- [x] Cart integration — CartSheet order button wired to `usePaymentFlow`
+- [x] Trilingual innopay translation keys in `lib/i18n/translations.ts`
+- [x] Env vars on Vercel
+- [x] `allowedDevOrigins` in `next.config.ts` for LAN phone testing
 
-### CO page tasks
+### CO page — implemented
 
-- [ ] API routes (`/api/transfers/sync-from-merchant-hub`, `/api/transfers/unfulfilled`, `/api/fulfill`, `/api/balance/euro`, `/api/check-mine`)
-- [ ] Admin CO page (`app/admin/current_orders/page.tsx`)
-- [ ] Merchant-hub polling + Redis stream consumption
-- [ ] Order display with memo hydration
-- [ ] Fulfill workflow
-- [ ] Bell sounds for new orders
+- [x] API routes (`/api/transfers/sync-from-merchant-hub`, `/api/transfers/unfulfilled`, `/api/fulfill`, `/api/balance/euro`, `/api/check-mine`)
+- [x] Admin CO page (`app/admin/current_orders/page.tsx`)
+- [x] Merchant-hub polling + Redis stream consumption (per-env consumer groups `sync-dev` / `sync-prod`)
+- [x] Order display with memo hydration (dishes / drinks split, per-item comments, per-item variants)
+- [x] Distriate-identifier grouping (EURO + HBD legs on one card)
+- [x] Call-waiter red pulsing card, never grouped — **not yet tested**
+- [x] Late threshold (10 min → amber card) — **not yet tested**
+- [x] Fulfill workflow (group-aware, acknowledges all transfer IDs) — **not yet tested**
+- [x] Bell sound on new arrival (`bell.mp3`) — observed working during Flow 3 smoke test
+- [x] Per-order reminder every 30s — implemented, **not yet tested**
+- [x] Per-order card mute button with global-sound gating (group-atomic toggle) — implemented, **not yet tested**
+- [x] Sound-enable confirmation ring — implemented, **not yet tested**
+- [x] Merchant-hub wake-up call on page mount — implemented, **not yet tested** (the original Flow-3 test needed a manual `/api/poll` because wake-up wasn't in place yet)
+
+### Remaining
+
+- [ ] Exercise Flows 4, 5, 6, 7, 8 end-to-end
+- [ ] Test call-waiter, dedup modal, per-order mute, 30s reminder, wake-up, fulfill, late threshold
+- [ ] Merchant-hub dashboard card for Millewee (`merchant-hub/app/page.tsx` currently only shows Indie + CB)
+- [ ] (carryover) Flow 6 EURO transfer memo missing order data
+- [ ] (carryover) Flow 6 stale balance — needs fresh blockchain fetch + 10s cooldown between consecutive Flow 6 orders
 
 ---
 

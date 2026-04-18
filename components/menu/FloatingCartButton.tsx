@@ -15,7 +15,7 @@ export function FloatingCartButton({ onClick }: FloatingCartButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="fixed bottom-4 right-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
+      className="fixed bottom-[42px] right-4 z-40 flex items-center gap-2 bg-primary text-primary-foreground px-4 py-3 rounded-full shadow-lg hover:bg-primary/90 transition-colors"
     >
       <ShoppingBag className="h-5 w-5" />
       <span className="font-semibold text-sm">{totalPrice.toFixed(2)} {'\u20ac'}</span>

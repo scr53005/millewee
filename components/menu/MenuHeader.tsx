@@ -34,6 +34,7 @@ export function MenuHeader({ onCartOpen }: MenuHeaderProps) {
               src="/images/logo_millewee_transp.png"
               alt="Millewee"
               fill
+              sizes="40px"
               className="object-contain dark:brightness-0 dark:invert"
               priority
             />

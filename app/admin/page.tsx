@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, LogOut } from 'lucide-react';
+import { UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, LogOut, ClipboardList } from 'lucide-react';
 
 const navCards = [
+  { title: 'Commandes en cours', description: 'Commandes reçues à servir', href: '/admin/current_orders', icon: ClipboardList },
   { title: 'Catégories', description: 'Gérer les catégories', href: '/admin/categories', icon: Tags },
   { title: 'Plats', description: 'Gérer les plats et variantes', href: '/admin/dishes', icon: UtensilsCrossed },
   { title: 'Boissons', description: 'Gérer les boissons et tailles', href: '/admin/drinks', icon: Wine },
