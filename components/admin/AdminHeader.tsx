@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ClipboardList, UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar } from 'lucide-react';
+import { Home, ClipboardList, UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, Clock } from 'lucide-react';
 
 const navItems = [
   { title: 'Accueil', href: '/admin', icon: Home, exact: true },
@@ -12,6 +12,7 @@ const navItems = [
   { title: 'Boissons', href: '/admin/drinks', icon: Wine },
   { title: 'Allergènes', href: '/admin/allergens', icon: AlertTriangle },
   { title: 'Spéciaux', href: '/admin/weekly-specials', icon: Calendar },
+  { title: 'Horaires', href: '/admin/opening-hours', icon: Clock },
 ];
 
 export function AdminHeader() {

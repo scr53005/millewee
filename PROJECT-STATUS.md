@@ -14,6 +14,19 @@
 - [x] Landing page with logo, green wall strip, tagline
 - [x] Prisma 7 setup (18 models, `prisma.config.ts`, `@prisma/adapter-pg`)
 - [x] Local dev + Vercel prod databases, seed script, copy-data script
+
+> **Lesson learned — always create TWO local dev databases from day one:**
+> - `{spoke}` — the regular dev DB (e.g. `millewee`)
+> - `{spoke}_shadow` — the Prisma shadow DB (e.g. `millewee_shadow`)
+>
+> Both owned by the local `Sorin` user, both pointed at by `.env.local`:
+> ```
+> POSTGRES_URL="postgresql://Sorin@localhost:5432/{spoke}?schema=public"
+> SHADOW_DATABASE_URL="postgresql://Sorin@localhost:5432/{spoke}_shadow?schema=public"
+> ```
+> `prisma.config.ts` must read both (`datasource.url` + `datasource.shadowDatabaseUrl`). The shadow DB is dev-only — no `SHADOW_DATABASE_URL` is ever set on Vercel.
+>
+> **Use `prisma migrate dev` from the very first schema change — avoid `prisma db push`.** `db push` creates no migration history, and transitioning later requires a manual baseline (`migrate diff --from-empty --to-schema ... --script > 0_init/migration.sql` + `migrate resolve --applied 0_init`) AND is prone to encoding corruption on PowerShell (`>` defaults to UTF-16 LE and captures dotenv stdout — the resulting file silently breaks shadow DB replay with misleading "Can't reach database server" errors). Baselining is fine as a one-off rescue, but starting clean with `migrate dev` is strictly simpler.
 - [x] Translation script (Claude API via Haiku 4.5, trilingual FR/EN/LB)
 - [x] QR code generation script (44 tables, branded stickers)
 - [x] Vercel deployment working

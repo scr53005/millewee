@@ -97,3 +97,48 @@ export const weeklySpecialSchema = z.object({
 });
 
 export type WeeklySpecialFormData = z.infer<typeof weeklySpecialSchema>;
+
+// ─── Services ───
+
+export const servicesSchema = z.object({
+  name_fr: z.string().min(1, 'Nom français requis'),
+  name_en: z.string().min(1, 'Nom anglais requis'),
+  name_lb: z.string().min(1, 'Nom luxembourgeois requis'),
+  sort_order: z.coerce.number().int().nonnegative().default(0),
+  is_active: z.boolean().default(true),
+});
+
+export type ServiceFormData = z.infer<typeof servicesSchema>;
+
+// ─── Standard Week ───
+
+const intervalSchema = z
+  .union([
+    z.string().regex(/^\d{2}:\d{2}-\d{2}:\d{2}$/, 'Format HH:MM-HH:MM').refine(
+      (s) => {
+        const [o, c] = s.split('-');
+        return o < c;
+      },
+      { message: "L'heure de fermeture doit être après l'ouverture" },
+    ),
+    z.literal(''),
+    z.null(),
+  ])
+  .transform((v) => (v === '' ? null : v));
+
+export const standardWeekSchema = z.object({
+  service_id: z.coerce.number().int().positive(),
+  mon: intervalSchema,
+  tue: intervalSchema,
+  wed: intervalSchema,
+  thu: intervalSchema,
+  fri: intervalSchema,
+  sat: intervalSchema,
+  sun: intervalSchema,
+});
+
+export type StandardWeekFormData = z.infer<typeof standardWeekSchema>;
+
+export const regenerateScheduleSchema = z.object({
+  weeks: z.coerce.number().int().positive().max(52).default(4),
+});

@@ -21,6 +21,7 @@ import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { readFileSync } from "fs";
 import { resolve } from "path";
+import { regenerate } from "../lib/schedule/regenerate";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.POSTGRES_URL! }),
@@ -400,6 +401,36 @@ async function seedTables() {
   console.log(`  ✓ ${count} restaurant tables created`);
 }
 
+// ─── Seed Opening Hours ───
+
+async function seedOpeningHours() {
+  const service = await prisma.services.create({
+    data: {
+      name_fr: "Ouverture",
+      name_en: "Open",
+      name_lb: "Op",
+      sort_order: 0,
+      is_active: true,
+    },
+  });
+
+  await prisma.standard_week.create({
+    data: {
+      service_id: service.id,
+      mon: "10:00-23:59",
+      tue: "10:00-23:59",
+      wed: "10:00-23:59",
+      thu: "10:00-23:59",
+      fri: "10:00-23:59",
+      sat: "10:00-23:59",
+      sun: "10:00-23:59",
+    },
+  });
+
+  const generated = await regenerate(prisma, 4);
+  console.log(`  ✓ 1 service + standard week seeded, current_schedule regenerated (${generated} days)`);
+}
+
 // ─── Main ───
 
 async function main() {
@@ -421,6 +452,9 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.allergen.deleteMany();
   await prisma.restaurant_table.deleteMany();
+  await prisma.current_schedule.deleteMany();
+  await prisma.standard_week.deleteMany();
+  await prisma.services.deleteMany();
 
   // Reset auto-increment sequences so IDs start from 1
   await prisma.$executeRaw`ALTER SEQUENCE category_id_seq RESTART WITH 1`;
@@ -432,6 +466,9 @@ async function main() {
   await prisma.$executeRaw`ALTER SEQUENCE customer_preference_id_seq RESTART WITH 1`;
   await prisma.$executeRaw`ALTER SEQUENCE weekly_special_id_seq RESTART WITH 1`;
   await prisma.$executeRaw`ALTER SEQUENCE live_event_id_seq RESTART WITH 1`;
+  await prisma.$executeRaw`ALTER SEQUENCE services_id_seq RESTART WITH 1`;
+  await prisma.$executeRaw`ALTER SEQUENCE standard_week_id_seq RESTART WITH 1`;
+  await prisma.$executeRaw`ALTER SEQUENCE current_schedule_id_seq RESTART WITH 1`;
   console.log("  ✓ Cleared + sequences reset\n");
 
   // Seed allergens first (referenced by dishes)
@@ -451,6 +488,10 @@ async function main() {
 
   console.log("Seeding restaurant tables...");
   await seedTables();
+  console.log();
+
+  console.log("Seeding opening hours...");
+  await seedOpeningHours();
   console.log();
 
   console.log("✅ Seed complete!");

@@ -229,6 +229,49 @@ model restaurant_table {
   location     String @default("intérieur") // "intérieur" | "terrasse"
 }
 
+// ─── Opening Hours (admin-managed) ───
+
+model services {
+  id         Int      @id @default(autoincrement())
+  name_fr    String
+  name_en    String
+  name_lb    String
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  standard_week standard_week[]
+}
+
+model standard_week {
+  id         Int      @id @default(autoincrement())
+  service_id Int
+  mon        String?  // "HH:MM-HH:MM" or NULL
+  tue        String?
+  wed        String?
+  thu        String?
+  fri        String?
+  sat        String?
+  sun        String?
+  created_at DateTime @default(now())
+
+  service services @relation(fields: [service_id], references: [id], onDelete: Cascade)
+
+  @@index([service_id, created_at])
+}
+
+model current_schedule {
+  id                  Int      @id @default(autoincrement())
+  date                DateTime @unique @db.Date
+  day_of_week         Int      // 1 = Mon ... 7 = Sun (ISO 8601)
+  resolved            Json
+  source_standard_ids Int[]
+  generated_at        DateTime @default(now())
+
+  @@index([date])
+}
+
 // ─── Innopay: Transfers ───
 // Mirrors the Redis stream written by merchant-hub. One row per Hive/Hive-Engine
 // transfer received by our restaurant account.
