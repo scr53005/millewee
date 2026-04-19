@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-04-18
+**Last updated**: 2026-04-19
 
 ---
 
@@ -130,9 +130,9 @@ Customer-facing menu browsing and cart functionality. This is what restaurant gu
 
 - [ ] Scroll-spy threshold values may need fine-tuning on different screen sizes
 - [ ] No dish/drink images in DB yet — admin UI has `image_url` field but no upload mechanism (Phase 6)
-- [ ] Order button is disabled — payment integration is Phase 4
+- [x] ~~Order button is disabled — payment integration is Phase 4~~ — payment wired in Phase 4
 - [ ] A/B allergen testing: decide which variant wins, then promote it to `page.tsx` and remove the other
-- [ ] Not yet deployed to production (ready to deploy)
+- [x] ~~Not yet deployed to production (ready to deploy)~~ — deployed to prod
 
 ### Files created in Phase 3 (~26 files)
 
@@ -167,13 +167,14 @@ components/menu/FloatingCartButton.tsx     # Fixed FAB with total
 
 ---
 
-## Phase 4+5: Payment Integration + CO Page — CODE COMPLETE, TESTING PARTIAL
+## Phase 4+5: Payment Integration + CO Page — DEPLOYED, TESTING PARTIAL
 
 Phases 4 and 5 merged — payment and CO page share the `transfers` table and merchant-hub integration; the CO page validates the end-to-end "table to kitchen" flow.
 
 **Reference**: Followed `SPOKE-DOCUMENTATION.md` (Next.js + Prisma spoke path). Backend patterns copied from indiesmenu, state-machine style from croque-bedaine.
 
-> **⚠️ Testing status (2026-04-18)**: Only **Flow 3 (guest checkout)** has been exercised end-to-end so far (phone → hub → Stripe test card → webhook → HBD transfer → merchant-hub → CO page). Flows 4, 5, 6, 7, 8 are wired but **not yet tested**. Call-waiter, duplicate-order modal, pulsing guardrails, per-order mute, 30s reminder, merchant-hub wake-up, fulfill, and delayed-order data-model extensibility are also **not yet exercised**. Significant testing remains before a real-world deploy.
+> **Testing status (2026-04-19)**: Deployed to prod. Verified end-to-end: **Flow 3** (guest checkout), **Flow 6** (external wallet → HBD sweep), **Flow 8** (import existing account). Still to exercise: Flows 4 (Stripe topup), 5 (account creation + pay), 7 (wallet topup from Stripe); call-waiter; duplicate-order modal; per-order mute.
+> Verified working on the CO page: 30s per-order reminder, merchant-hub wake-up, fulfill workflow, late-threshold amber card.
 
 ### Key decisions (April 2026)
 
@@ -193,9 +194,9 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] Payment hooks (`hooks/innopay/usePaymentFlow.ts`, `useInnopayCart.ts`, `useBalance.ts`)
 - [x] UI components (`MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`, `WalletReopenButton.tsx`)
 - [x] `InnopayChrome.tsx` — host for MiniWallet + WalletReopenButton + BottomBanner, wired into customer layout
-- [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **only Flow 3 tested so far**
-- [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **not yet tested**
-- [x] Flow 6 cooldown (12s post-payment) — implemented, **not yet tested**
+- [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **Flows 3, 6, 8 tested in prod; 4, 5, 7 still to exercise**
+- [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **dedup modal not yet exercised**
+- [x] Flow 6 cooldown (12s post-payment) — implemented, **confirmed via Flow 6 prod test**
 - [x] Cart integration — CartSheet order button wired to `usePaymentFlow`
 - [x] Trilingual innopay translation keys in `lib/i18n/translations.ts`
 - [x] Env vars on Vercel
@@ -209,22 +210,22 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] Order display with memo hydration (dishes / drinks split, per-item comments, per-item variants)
 - [x] Distriate-identifier grouping (EURO + HBD legs on one card)
 - [x] Call-waiter red pulsing card, never grouped — **not yet tested**
-- [x] Late threshold (10 min → amber card) — **not yet tested**
-- [x] Fulfill workflow (group-aware, acknowledges all transfer IDs) — **not yet tested**
-- [x] Bell sound on new arrival (`bell.mp3`) — observed working during Flow 3 smoke test
-- [x] Per-order reminder every 30s — implemented, **not yet tested**
+- [x] Late threshold (10 min → amber card) — verified in prod
+- [x] Fulfill workflow (group-aware, acknowledges all transfer IDs) — verified in prod
+- [x] Bell sound on new arrival (`bell.mp3`) — verified in prod
+- [x] Per-order reminder every 30s — verified in prod
 - [x] Per-order card mute button with global-sound gating (group-atomic toggle) — implemented, **not yet tested**
-- [x] Sound-enable confirmation ring — implemented, **not yet tested**
-- [x] Merchant-hub wake-up call on page mount — implemented, **not yet tested** (the original Flow-3 test needed a manual `/api/poll` because wake-up wasn't in place yet)
+- [x] Sound-enable confirmation ring — verified in prod (via bell.mp3 fix)
+- [x] Merchant-hub wake-up call on page mount — verified in prod; since upgraded to full single-poller election (2026-04-19)
 
 ### Remaining
 
-- [ ] **BUG: Flow 3 success banner does not appear on return** from Stripe checkout — after a successful Flow 3 payment, the customer is redirected back to the restaurant menu but the unified success banner does not show. Needs investigation (likely: the return-URL query param handling in the payment state machine is not firing, or the banner is rendered but dismissed too quickly, or the state machine isn't being fed the `?payment=success` — to be confirmed)
-- [ ] Exercise Flows 4, 5, 6, 7, 8 end-to-end
-- [ ] Test call-waiter, dedup modal, per-order mute, 30s reminder, wake-up, fulfill, late threshold
-- [ ] Merchant-hub dashboard card for Millewee (`merchant-hub/app/page.tsx` currently only shows Indie + CB)
-- [ ] (carryover) Flow 6 EURO transfer memo missing order data
-- [ ] (carryover) Flow 6 stale balance — needs fresh blockchain fetch + 10s cooldown between consecutive Flow 6 orders
+- [x] ~~**BUG: Flow 3 success banner does not appear on return** from Stripe checkout~~ — resolved
+- [ ] Exercise Flows 4, 5, 7 end-to-end (Flows 3, 6, 8 verified in prod)
+- [ ] Test call-waiter, dedup modal, per-order mute
+- [x] ~~Merchant-hub dashboard card for Millewee~~ — done
+- [x] ~~(carryover) Flow 6 EURO transfer memo missing order data~~ — fixed across all three spokes (2026-04-19)
+- [x] ~~(carryover) Flow 6 stale balance — needs fresh blockchain fetch + 10s cooldown between consecutive Flow 6 orders~~ — 12s cooldown + fresh balance fetch in place, verified via Flow 6 prod test
 
 ---
 
@@ -242,6 +243,31 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - Performance optimization
 - Full Vercel production deployment
 - QR code stickers printed and deployed
+
+---
+
+## Phase 7: Documentation — Extract "spoke.md" skill (not started)
+
+Complement the existing high-level `SPOKE-DOCUMENTATION.md` (reference manual: what exists, how it works, why) with a practical step-by-step runbook distilled from the Millewee build sequence (Phases 1–5 above).
+
+### Rationale
+
+Millewee was the first spoke built entirely from SPOKE-DOCUMENTATION.md. The experience surfaced the *order* in which things need to happen (scaffold → data model → admin CRUD → customer menu → payment integration → CO page) and the landmines at each step (Prisma 7 adapter, Base UI callback signatures, Next.js 16 `proxy.ts` rename, Stripe webhook path, dead env vars, distriate suffix). SPOKE-DOCUMENTATION.md does not enforce that order — a fresh implementer could start in the wrong place.
+
+### Scope
+
+- Ordered phase checklist (Phase 1 scaffold → Phase 7 docs), each phase as a collapsible section
+- For each phase: inputs needed, files to copy (with source spoke), files to build fresh, common landmines
+- Cross-links back into SPOKE-DOCUMENTATION.md for the "why" — do not re-explain concepts that already live there
+- Kept tight: runbooks rot faster than reference docs, so the goal is "what to do next" not "what everything means"
+
+### Tradeoff
+
+Two documents means two places to update. Mitigation: spoke.md links into SPOKE-DOCUMENTATION.md rather than duplicating content — it stays short (a checklist, not a manual) and only the step order + landmine list are maintained there.
+
+### Deliverable
+
+One new file at project root (or in a `docs/` folder alongside SPOKE-DOCUMENTATION.md). Format: a Claude Code skill if invocable via `/spoke`, otherwise a plain markdown runbook.
 
 ---
 

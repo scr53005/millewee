@@ -148,7 +148,7 @@ export function createEuroTransferOperation(
  * Signs and broadcasts a Hive operation using the active key
  */
 export async function signAndBroadcastOperation(
-  operation: unknown,
+  operation: Record<string, any>,
   activePrivateKey: string
 ): Promise<string> {
   console.log('[SIGN] Starting broadcast...', { operation });
@@ -277,7 +277,12 @@ export function dehydrateMemo(cart: MemoCartItem[]): string {
     Object.keys(item.options).forEach(optionKey => {
       const shortCode = optionShortCodes[optionKey];
       if (shortCode && item.options[optionKey]) {
-        itemMemo += `,${shortCode}:${item.options[optionKey]}`;
+        // Sanitize: comma is the field separator in the dehydrated memo, so any
+        // comma inside an option value (e.g. French "0,5L" drink size) would
+        // split the value at hydrate time. Replace with dot — still a valid
+        // decimal separator, and fully reversible for display.
+        const safeValue = String(item.options[optionKey]).replace(/,/g, '.');
+        itemMemo += `,${shortCode}:${safeValue}`;
       }
     });
 
@@ -430,7 +435,12 @@ export function hydrateMemoFull(rawMemo: string, menuData?: MenuDataForHydration
     if (itemName) {
       let description = itemName;
       if (ingredientOption) description = `${description} - ${ingredientOption}`;
-      if (sizeOption) description = `${description} (${sizeOption})`;
+      if (sizeOption) {
+        // Reverse the dehydrate-time comma→dot substitution on decimal-looking
+        // sizes so French-format labels render as "0,5L" rather than "0.5L".
+        const displaySize = sizeOption.replace(/(\d)\.(\d)/g, '$1,$2');
+        description = `${description} (${displaySize})`;
+      }
 
       const categoryType: 'dish' | 'drink' = typePrefix === 'd' ? 'dish' : 'drink';
 

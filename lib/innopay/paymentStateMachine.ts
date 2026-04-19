@@ -69,6 +69,12 @@ export function paymentReducer(state: PaymentState, event: PaymentEvent): Paymen
           return { status: 'redirecting', flow: event.flow, returnUrl: '' };
         }
       }
+      // Already idle — RESET / DISMISS_BANNER are no-ops. Accept them silently
+      // so the "Invalid transition" warning doesn't fire on double-dismiss or
+      // on banners that dispatch RESET defensively at mount.
+      if (event.type === 'RESET' || event.type === 'DISMISS_BANNER') {
+        return state;
+      }
       break;
 
     case 'selecting_flow':

@@ -8,7 +8,6 @@
  * MVP scope (kept intentionally lean):
  *   - no thermal printer (no printing logic)
  *   - no delayed orders (data model supports P@/T@ timing but not displayed here)
- *   - no poller rotation (single instance drains the stream)
  *
  * Call-waiter transfers are rendered with a red pulsing card and are never grouped.
  *
@@ -17,10 +16,12 @@
  *   - On arrival of a new transfer, the bell rings once and a 30s per-order reminder starts.
  *   - Each card has its own mute button; muting stops that order's reminder only.
  *
- * Merchant-hub wake-up:
- *   - On page mount we hit merchant-hub /api/poll once to wake it up immediately,
- *     instead of waiting up to 5 min for the Vercel cron fallback. (Relevant mostly in
- *     dev or after an idle period — in a busy restaurant the active poller is always hot.)
+ * Merchant-hub poller election:
+ *   - On mount we call /api/wake-up to join the single-poller election. If we win,
+ *     a 6s /api/poll loop keeps HAF fresh and refreshes the heartbeat. If we lose,
+ *     we just sync locally from Redis — another CO page is driving HAF.
+ *   - We re-run /api/wake-up every 30s. This reclaims the poller role if the
+ *     previous winner's tab died (heartbeat goes stale, its lock TTL expires).
  */
 
 'use client';
@@ -63,6 +64,8 @@ interface GroupedOrder {
 }
 
 const POLL_MS = 6000;
+const WAKE_UP_MS = 30_000;
+const SHOP_ID = 'millewee-current-orders';
 const REMINDER_MS = 30000;
 const LATE_THRESHOLD_MS = 10 * 60 * 1000;
 const CALL_WAITER_HINT = /appel|serveur|waiter|kellner/i;
@@ -101,11 +104,16 @@ export default function CurrentOrdersPage() {
   const [audioOn, setAudioOn] = useState(false);
   const [mutedOrders, setMutedOrders] = useState<Set<string>>(new Set());
 
+  const [isPoller, setIsPoller] = useState(false);
+  const [pollerStatus, setPollerStatus] = useState<string>('');
+
   const bellRef = useRef<HTMLAudioElement | null>(null);
   const previousIdsRef = useRef<Set<string>>(new Set());
   const audioOnRef = useRef(audioOn);
   const mutedOrdersRef = useRef(mutedOrders);
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hafPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wakeUpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reminderTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
 
   const isDev = process.env.NODE_ENV === 'development';
@@ -120,8 +128,25 @@ export default function CurrentOrdersPage() {
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      bellRef.current = new Audio('/sounds/bell.mp3');
-      bellRef.current.load();
+      // Absolute-origin URL avoids any edge cases where `new Audio('/sounds/...')`
+      // resolves against a non-origin document baseURI (iframe, srcdoc, etc.).
+      const src = `${window.location.origin}/sounds/bell.mp3`;
+      const audio = new Audio();
+      audio.preload = 'auto';
+      // Diagnostic: when Audio.play() rejects with NotSupportedError, the real
+      // failure reason is on the element's `error` property, not in the play()
+      // rejection. Capture it here so we can see *why* the source was rejected
+      // (404 vs corrupt decode vs CORS vs MIME mismatch).
+      audio.addEventListener('error', () => {
+        const err = audio.error;
+        console.warn(
+          '[AUDIO] bell.mp3 failed to load:',
+          err ? { code: err.code, message: err.message, src: audio.currentSrc || audio.src } : 'unknown',
+        );
+      });
+      audio.src = src;
+      audio.load();
+      bellRef.current = audio;
     }
   }, []);
 
@@ -298,28 +323,63 @@ export default function CurrentOrdersPage() {
     }
   }, [hydrate, ringBellNow, ringBellForOrder]);
 
-  // One-shot merchant-hub wake-up on mount: trigger the HAF poller immediately so
-  // new transfers hit our Redis stream within seconds rather than waiting up to 5 min
-  // for the Vercel cron fallback. Relevant mostly during dev or after an idle period.
-  useEffect(() => {
-    const merchantHubUrl = getMerchantHubUrl();
-    fetch(`${merchantHubUrl}/api/poll`)
-      .then((res) => {
-        if (res.ok) {
-          res
-            .json()
-            .then((data) => {
-              console.warn(
-                `[POLL] Wake-up poll: ${data.transfersFound ?? 0} transfers found`,
-              );
-            })
-            .catch(() => {});
-        } else {
-          console.warn(`[POLL] Wake-up poll failed: ${res.status}`);
+  // Single-poller election. Only one CO page (across all spokes) drives the HAF
+  // poll loop at any given time — the others just consume from Redis. This keeps
+  // HAF load bounded regardless of how many kitchen tablets are open.
+  const triggerHafPoll = useCallback(async () => {
+    const hubUrl = getMerchantHubUrl();
+    try {
+      const res = await fetch(`${hubUrl}/api/poll`);
+      if (res.ok) {
+        const data = await res.json();
+        if (isDev) console.log(`[POLL] HAF poll: ${data.transfersFound ?? 0} transfers found`);
+      }
+    } catch (err) {
+      console.error('[POLL] HAF poll error:', err instanceof Error ? err.message : err);
+    }
+  }, [isDev]);
+
+  const triggerWakeUp = useCallback(async () => {
+    const hubUrl = getMerchantHubUrl();
+    try {
+      const res = await fetch(`${hubUrl}/api/wake-up`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ shopId: SHOP_ID }),
+      });
+      if (!res.ok) {
+        console.warn(`[WAKE-UP] Failed: ${res.status}`);
+        return;
+      }
+      const data = await res.json();
+      if (data.shouldStartPolling) {
+        setIsPoller(true);
+        setPollerStatus(`Poller actif (${SHOP_ID})`);
+        if (!hafPollTimerRef.current) {
+          triggerHafPoll();
+          hafPollTimerRef.current = setInterval(triggerHafPoll, POLL_MS);
         }
-      })
-      .catch((err) => console.error('[POLL] Wake-up error:', err));
-  }, []);
+      } else {
+        setIsPoller(false);
+        setPollerStatus(`Poller: ${data.poller || 'inconnu'}`);
+        if (hafPollTimerRef.current) {
+          clearInterval(hafPollTimerRef.current);
+          hafPollTimerRef.current = null;
+        }
+      }
+    } catch (err) {
+      console.error('[WAKE-UP] Error:', err instanceof Error ? err.message : err);
+    }
+  }, [triggerHafPoll]);
+
+  useEffect(() => {
+    triggerWakeUp();
+    wakeUpTimerRef.current = setInterval(triggerWakeUp, WAKE_UP_MS);
+    return () => {
+      if (wakeUpTimerRef.current) clearInterval(wakeUpTimerRef.current);
+      if (hafPollTimerRef.current) clearInterval(hafPollTimerRef.current);
+    };
+  }, [triggerWakeUp]);
 
   useEffect(() => {
     syncAndReload();
@@ -415,9 +475,14 @@ export default function CurrentOrdersPage() {
           Erreur: {error}
         </div>
       )}
-      {isDev && syncInfo && (
-        <div className="text-xs text-gray-500 mb-2 inline-block bg-gray-100 px-2 py-1 rounded">
-          {syncInfo}
+      {isDev && (syncInfo || pollerStatus) && (
+        <div className="text-xs mb-2 inline-block bg-gray-100 px-2 py-1 rounded space-x-2">
+          {pollerStatus && (
+            <span className={isPoller ? 'text-green-700 font-bold' : 'text-gray-600'}>
+              {pollerStatus}
+            </span>
+          )}
+          {syncInfo && <span className="text-gray-500">{syncInfo}</span>}
         </div>
       )}
 

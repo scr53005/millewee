@@ -17,6 +17,7 @@ import {
   paymentReducer,
   initialPaymentState,
   PaymentState,
+  PaymentEvent,
   FlowType,
   Credentials,
   Language,
@@ -482,7 +483,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
 
 async function processHubReturn(
   params: URLSearchParams | ReturnType<typeof useSearchParams>,
-  dispatch: React.Dispatch<{ type: string;[key: string]: unknown }>,
+  dispatch: React.Dispatch<PaymentEvent>,
   onCartClear: () => void,
   t: typeof messages[Language],
   onCredentialsReceived?: (credentials: Credentials) => void,
@@ -660,7 +661,11 @@ async function executeFlow6Payment(
   const amountEuro = amount.toFixed(3);
 
   // ── Leg 1: Customer → innopay (EURO collateral) ──
-  const euroOp = createEuroTransferOperation(accountName, 'innopay', amountEuro, suffix);
+  // Include the full cart memo alongside the distriate suffix so the customer-leg
+  // transfer on-chain reflects what was ordered (not just an opaque tag). Matches
+  // the memo format used on other flows.
+  const memoWithSuffix = memo ? `${memo} ${suffix}` : suffix;
+  const euroOp = createEuroTransferOperation(accountName, 'innopay', amountEuro, memoWithSuffix);
 
   const signPayload: Record<string, unknown> = { operation: euroOp };
   if (activeKey) {
