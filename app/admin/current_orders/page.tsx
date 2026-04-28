@@ -22,6 +22,15 @@
  *     we just sync locally from Redis — another CO page is driving HAF.
  *   - We re-run /api/wake-up every 30s. This reclaims the poller role if the
  *     previous winner's tab died (heartbeat goes stale, its lock TTL expires).
+ *
+ * Zombie-tab protection (3 layers):
+ *   1. Opening-hours gate: outside restaurant hours, ALL polling stops. A dormant
+ *      banner is shown. A 60s check restarts polling when hours resume.
+ *   2. Adaptive backoff: after 5 min of no new orders the poll interval grows from
+ *      6s → 30s; after 15 min → 60s. Any new order resets to 6s instantly.
+ *   3. Page Visibility API: when the tab is hidden (backgrounded, phone locked),
+ *      polling pauses entirely. On return to visible, an immediate sync fires and
+ *      normal polling resumes.
  */
 
 'use client';
@@ -38,6 +47,7 @@ import {
   type HydratedOrderLine,
   type MenuDataForHydration,
 } from '@/lib/innopay/utils';
+import { isRestaurantOpenNow } from '@/lib/config/kitchen-hours';
 
 interface RawTransfer {
   id: string;
@@ -64,11 +74,18 @@ interface GroupedOrder {
 }
 
 const POLL_MS = 6000;
+const POLL_MS_SLOW = 30_000;
+const POLL_MS_SLOWER = 60_000;
+const IDLE_SLOW_AFTER = 50;    // 50 × 6s = 5 min → switch to 30s
+const IDLE_SLOWER_AFTER = 150;  // ~15 min total → switch to 60s
+const HOURS_CHECK_MS = 60_000;
 const WAKE_UP_MS = 30_000;
 const SHOP_ID = 'millewee-current-orders';
 const REMINDER_MS = 30000;
 const LATE_THRESHOLD_MS = 10 * 60 * 1000;
 const CALL_WAITER_HINT = /appel|serveur|waiter|kellner/i;
+
+type PauseReason = 'none' | 'closed' | 'hidden';
 
 function getMerchantHubUrl(): string {
   return (
@@ -106,15 +123,20 @@ export default function CurrentOrdersPage() {
 
   const [isPoller, setIsPoller] = useState(false);
   const [pollerStatus, setPollerStatus] = useState<string>('');
+  const [pauseReason, setPauseReason] = useState<PauseReason>('none');
 
   const bellRef = useRef<HTMLAudioElement | null>(null);
   const previousIdsRef = useRef<Set<string>>(new Set());
   const audioOnRef = useRef(audioOn);
   const mutedOrdersRef = useRef(mutedOrders);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hafPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeUpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hoursCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reminderTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const idleCyclesRef = useRef(0);
+  const currentIntervalRef = useRef(POLL_MS);
+  const pausedRef = useRef(false);
 
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -270,8 +292,11 @@ export default function CurrentOrdersPage() {
       const { transfers: raw } = await unfulRes.json();
       const hydrated = hydrate(raw || []);
 
+      // --- Adaptive backoff: track idle cycles ---
       const newOnes = hydrated.filter((t) => !previousIdsRef.current.has(t.id));
       if (newOnes.length > 0) {
+        idleCyclesRef.current = 0;
+        currentIntervalRef.current = POLL_MS;
         ringBellNow();
         for (const tx of newOnes) {
           if (!reminderTimersRef.current.has(tx.id)) {
@@ -314,6 +339,16 @@ export default function CurrentOrdersPage() {
         return hydrated;
       });
       setError(null);
+
+      // Adaptive backoff: if no new orders, progressively slow down
+      if (newOnes.length === 0) {
+        idleCyclesRef.current++;
+        if (idleCyclesRef.current >= IDLE_SLOWER_AFTER) {
+          currentIntervalRef.current = POLL_MS_SLOWER;
+        } else if (idleCyclesRef.current >= IDLE_SLOW_AFTER) {
+          currentIntervalRef.current = POLL_MS_SLOW;
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       console.error('[SYNC] error:', message);
@@ -372,24 +407,100 @@ export default function CurrentOrdersPage() {
     }
   }, [triggerHafPoll]);
 
-  useEffect(() => {
+  // --- Polling orchestrator: start/stop all loops based on pause state ---
+
+  const clearAllTimers = useCallback(() => {
+    if (pollTimerRef.current) { clearTimeout(pollTimerRef.current); pollTimerRef.current = null; }
+    if (hafPollTimerRef.current) { clearInterval(hafPollTimerRef.current); hafPollTimerRef.current = null; }
+    if (wakeUpTimerRef.current) { clearInterval(wakeUpTimerRef.current); wakeUpTimerRef.current = null; }
+    reminderTimersRef.current.forEach((h) => clearInterval(h));
+    reminderTimersRef.current.clear();
+  }, []);
+
+  const startPolling = useCallback(() => {
+    if (pausedRef.current) return;
+    // Wake-up loop (poller election)
     triggerWakeUp();
     wakeUpTimerRef.current = setInterval(triggerWakeUp, WAKE_UP_MS);
-    return () => {
-      if (wakeUpTimerRef.current) clearInterval(wakeUpTimerRef.current);
-      if (hafPollTimerRef.current) clearInterval(hafPollTimerRef.current);
-    };
-  }, [triggerWakeUp]);
-
-  useEffect(() => {
+    // Sync+reload loop using chained setTimeout for dynamic interval
+    function scheduleNext() {
+      pollTimerRef.current = setTimeout(async () => {
+        await syncAndReload();
+        if (!pausedRef.current) scheduleNext();
+      }, currentIntervalRef.current);
+    }
     syncAndReload();
-    pollTimerRef.current = setInterval(syncAndReload, POLL_MS);
+    scheduleNext();
+  }, [triggerWakeUp, syncAndReload]);
+
+  const pausePolling = useCallback((reason: PauseReason) => {
+    pausedRef.current = true;
+    setPauseReason(reason);
+    clearAllTimers();
+    console.warn(`[CO] Polling paused: ${reason}`);
+  }, [clearAllTimers]);
+
+  const resumePolling = useCallback(() => {
+    pausedRef.current = false;
+    setPauseReason('none');
+    idleCyclesRef.current = 0;
+    currentIntervalRef.current = POLL_MS;
+    console.warn('[CO] Polling resumed');
+    startPolling();
+  }, [startPolling]);
+
+  // Layer 1: Opening-hours gate
+  useEffect(() => {
+    function checkHours() {
+      const open = isRestaurantOpenNow();
+      if (!open && !pausedRef.current) {
+        pausePolling('closed');
+      } else if (open && pausedRef.current && pauseReason === 'closed') {
+        resumePolling();
+      }
+    }
+    checkHours();
+    hoursCheckTimerRef.current = setInterval(checkHours, HOURS_CHECK_MS);
     return () => {
-      if (pollTimerRef.current) clearInterval(pollTimerRef.current);
-      reminderTimersRef.current.forEach((h) => clearInterval(h));
-      reminderTimersRef.current.clear();
+      if (hoursCheckTimerRef.current) clearInterval(hoursCheckTimerRef.current);
     };
-  }, [syncAndReload]);
+  }, [pausePolling, resumePolling, pauseReason]);
+
+  // Layer 3: Page Visibility API
+  useEffect(() => {
+    function handleVisibility() {
+      if (document.hidden) {
+        // Only pause for visibility if not already paused for hours
+        if (!pausedRef.current) pausePolling('hidden');
+      } else {
+        if (pauseReason === 'hidden') {
+          // Check hours before resuming — tab may have been hidden overnight
+          if (isRestaurantOpenNow()) {
+            resumePolling();
+          } else {
+            setPauseReason('closed');
+          }
+        }
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [pausePolling, resumePolling, pauseReason]);
+
+  // Initial start (only if restaurant is open and tab is visible)
+  useEffect(() => {
+    if (isRestaurantOpenNow() && !document.hidden) {
+      startPolling();
+    } else if (!isRestaurantOpenNow()) {
+      pausedRef.current = true;
+      setPauseReason('closed');
+    } else {
+      pausedRef.current = true;
+      setPauseReason('hidden');
+    }
+    return () => clearAllTimers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // --- Group by Distriate identifier so EURO + HBD legs share one card ---
   const groupedOrders = useMemo((): GroupedOrder[] => {
@@ -470,6 +581,18 @@ export default function CurrentOrdersPage() {
           </div>
         </header>
 
+      {pauseReason === 'closed' && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 px-4 py-3 rounded mb-3 text-sm">
+          <strong>Restaurant ferm&eacute;</strong> &mdash; le polling est en pause.
+          Il reprendra automatiquement &agrave; l&rsquo;ouverture.
+        </div>
+      )}
+      {pauseReason === 'hidden' && (
+        <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded mb-3 text-sm">
+          <strong>Onglet en arri&egrave;re-plan</strong> &mdash; le polling est en pause.
+          Il reprendra quand cet onglet redeviendra visible.
+        </div>
+      )}
       {error && (
         <div className="bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded mb-3 text-sm">
           Erreur: {error}
