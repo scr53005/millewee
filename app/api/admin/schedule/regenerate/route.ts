@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ generated });
   } catch (error) {
     if (error instanceof ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Validation failed', details: error.issues }, { status: 400 });
     }
     console.error('Regenerate schedule error:', error);
     return NextResponse.json({ error: 'Failed to regenerate schedule' }, { status: 500 });
