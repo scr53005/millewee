@@ -11,7 +11,7 @@ export async function GET() {
   });
 
   const rows = await Promise.all(
-    services.map(async (s) => {
+    services.map(async (s: typeof services[number]) => {
       const active = await prisma.standard_week.findFirst({
         where: { service_id: s.id },
         orderBy: { created_at: 'desc' },
@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ row: created, generated }, { status: 201 });
   } catch (error) {
     if (error instanceof ZodError) {
-      return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
+      return NextResponse.json({ error: 'Validation failed', details: error.issues }, { status: 400 });
     }
     console.error('Save standard_week error:', error);
     return NextResponse.json({ error: 'Failed to save standard week' }, { status: 500 });
