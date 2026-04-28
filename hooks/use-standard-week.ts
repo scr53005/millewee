@@ -50,7 +50,7 @@ export function useSaveStandardWeek() {
 export function useRegenerateSchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (weeks = 4) => {
+    mutationFn: async (weeks: number = 4) => {
       const res = await fetch('/api/admin/schedule/regenerate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
