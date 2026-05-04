@@ -1,22 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { useI18n } from '@/lib/i18n';
-import { MenuPageA } from './page_A';
+import { languages, useI18n } from '@/lib/i18n';
 import { MenuPageB } from './page_B';
+import { WeeklyMenuPage } from '@/components/menu/WeeklyMenuPage';
 
-type Variant = null | 'A' | 'B';
+type MenuMode = 'weekly' | 'permanent';
 
-export default function Home() {
-  const [variant, setVariant] = useState<Variant>(null);
-  const { t } = useI18n();
+function HomeInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { language, setLanguage, t } = useI18n();
+  const mode = searchParams.get('menu') as MenuMode | null;
 
-  const toggleVariant = () => setVariant((v) => (v === 'A' ? 'B' : 'A'));
+  const setMenuMode = (nextMode: MenuMode | null) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextMode) params.set('menu', nextMode);
+    else params.delete('menu');
 
-  if (variant === 'A') return <MenuPageA onToggleVariant={toggleVariant} />;
-  if (variant === 'B') return <MenuPageB onToggleVariant={toggleVariant} />;
+    const qs = params.toString();
+    router.push(qs ? `/?${qs}` : '/');
+  };
+
+  if (mode === 'weekly') return <WeeklyMenuPage onBackToHero={() => setMenuMode(null)} />;
+  if (mode === 'permanent') return <MenuPageB onToggleVariant={() => setMenuMode(null)} />;
 
   return (
     <div className="min-h-screen flex flex-col items-center gap-8 p-6">
@@ -60,24 +70,51 @@ export default function Home() {
       {/* A/B variant selector */}
       <div className="flex flex-col gap-3 w-full max-w-sm mt-4">
         <button
-          onClick={() => setVariant('A')}
+          onClick={() => setMenuMode('weekly')}
           className="bg-primary text-primary-foreground px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
         >
-          {t('landing.variantA')}
-          <span className="block text-xs opacity-75 mt-0.5">{t('landing.variantAHint')}</span>
+          {t('landing.weeklyMenu')}
+          <span className="block text-xs opacity-75 mt-0.5">{t('landing.weeklyMenuHint')}</span>
         </button>
         <button
-          onClick={() => setVariant('B')}
+          onClick={() => setMenuMode('permanent')}
           className="bg-secondary text-secondary-foreground px-6 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
         >
-          {t('landing.variantB')}
-          <span className="block text-xs opacity-75 mt-0.5">{t('landing.variantBHint')}</span>
+          {t('landing.permanentMenu')}
+          <span className="block text-xs opacity-75 mt-0.5">{t('landing.permanentMenuHint')}</span>
         </button>
+      </div>
+
+      <div className="flex items-center justify-center gap-2" aria-label="Choisir la langue">
+        {languages.map((lang) => (
+          <button
+            key={lang.code}
+            type="button"
+            onClick={() => setLanguage(lang.code)}
+            className={`flex h-10 w-10 items-center justify-center rounded-full border text-xl transition-colors ${
+              language === lang.code
+                ? 'border-primary bg-primary/10 ring-2 ring-primary/40'
+                : 'border-border bg-background hover:bg-muted'
+            }`}
+            aria-label={lang.name}
+            title={lang.name}
+          >
+            {lang.flag}
+          </button>
+        ))}
       </div>
 
       <p className="text-xs text-muted-foreground mt-2">
         {t('landing.themeHint')}
       </p>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeInner />
+    </Suspense>
   );
 }

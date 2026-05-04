@@ -138,13 +138,14 @@ Customer-facing menu browsing and cart functionality. This is what restaurant gu
   - `AllergenModal.tsx` — small Dialog modal showing allergen details for a dish
   - `DishesSection.tsx` passes `allergenDisplay` prop through to DishCard
 - [x] **Toast removal** — add-to-cart toasts commented out in DishCard, DrinkCard, WeeklySpecialsBanner (toast import retained as comment for potential re-enablement)
+- [x] **Landing menu split** — Hero page retained, but choices are now URL-driven: `?menu=weekly` shows weekly specials plus drinks/cart/call-waiter, `?menu=permanent` shows the former Variant B permanent menu
 
 ### Known issues / TODO
 
 - [ ] Scroll-spy threshold values may need fine-tuning on different screen sizes
 - [ ] No dish/drink images in DB yet — admin UI has `image_url` field but no upload mechanism (Phase 6)
 - [x] ~~Order button is disabled — payment integration is Phase 4~~ — payment wired in Phase 4
-- [ ] A/B allergen testing: decide which variant wins, then promote it to `page.tsx` and remove the other
+- [x] ~~A/B allergen testing: decide which variant wins, then promote it to `page.tsx` and remove the other~~ — Variant B is the permanent menu; Variant A remains historical/reference code
 - [x] ~~Not yet deployed to production (ready to deploy)~~ — deployed to prod
 
 ### Files created in Phase 3 (~26 files)
@@ -211,6 +212,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **dedup modal not yet exercised**
 - [x] Flow 6 cooldown (12s post-payment) — implemented, **confirmed via Flow 6 prod test**
 - [x] Cart integration — CartSheet order button wired to `usePaymentFlow`
+- [x] Global payment return host — `PaymentReturnHost` mounted in customer layout handles Stripe/hub return params, credential import, cart clear, pulse start, and banners even when returning to the hero page
 - [x] Trilingual innopay translation keys in `lib/i18n/translations.ts`
 - [x] Env vars on Vercel
 - [x] `allowedDevOrigins` in `next.config.ts` for LAN phone testing

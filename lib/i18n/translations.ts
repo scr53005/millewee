@@ -34,6 +34,7 @@ export const translations = {
     'menu.specials': 'Plats de la Semaine',
     'menu.allCategories': 'Tout',
     'menu.noItems': 'Aucun element dans cette categorie',
+    'menu.noWeeklySpecials': 'Aucun plat de la semaine',
 
     // Badges
     'badge.popular': 'Populaire',
@@ -91,11 +92,11 @@ export const translations = {
     'misc.error': 'Erreur de chargement',
 
     // Landing (variant selector)
-    'landing.tagline': 'Sp\u00e9cialit\u00e9s de burgers et plats du jour — Luxembourg',
-    'landing.variantA': 'Voir le menu — Variante A',
-    'landing.variantAHint': 'Allerg\u00e8nes en ligne',
-    'landing.variantB': 'Voir le menu — Variante B',
-    'landing.variantBHint': 'Allerg\u00e8nes dans un modal',
+    'landing.tagline': 'Sp\u00e9cialit\u00e9s de burgers et plats du jour - Luxembourg',
+    'landing.weeklyMenu': 'Menu de la semaine',
+    'landing.weeklyMenuHint': 'Plats de la semaine et boissons',
+    'landing.permanentMenu': 'Menu permanent',
+    'landing.permanentMenuHint': 'Carte compl\u00e8te et boissons',
     'landing.themeHint': 'Basculez le mode clair/sombre via le bouton en haut \u00e0 droite',
   },
   en: {
@@ -133,6 +134,7 @@ export const translations = {
     'menu.specials': 'Weekly Specials',
     'menu.allCategories': 'All',
     'menu.noItems': 'No items in this category',
+    'menu.noWeeklySpecials': 'No weekly specials',
 
     // Badges
     'badge.popular': 'Popular',
@@ -190,11 +192,11 @@ export const translations = {
     'misc.error': 'Loading error',
 
     // Landing (variant selector)
-    'landing.tagline': 'Burger specialties and daily specials — Luxembourg',
-    'landing.variantA': 'View the menu — Variant A',
-    'landing.variantAHint': 'Allergens shown inline',
-    'landing.variantB': 'View the menu — Variant B',
-    'landing.variantBHint': 'Allergens shown in a modal',
+    'landing.tagline': 'Burger specialties and daily specials - Luxembourg',
+    'landing.weeklyMenu': 'Weekly menu',
+    'landing.weeklyMenuHint': 'Weekly specials and drinks',
+    'landing.permanentMenu': 'Permanent menu',
+    'landing.permanentMenuHint': 'Full menu and drinks',
     'landing.themeHint': 'Toggle dark/light mode with the button in the top-right corner',
   },
   lb: {
@@ -232,6 +234,7 @@ export const translations = {
     'menu.specials': 'Platen vun der Woch',
     'menu.allCategories': 'Alles',
     'menu.noItems': 'Keng Elementer an dëser Kategorie',
+    'menu.noWeeklySpecials': 'Kee Plat vun der Woch',
 
     // Badges
     'badge.popular': 'Beléift',
@@ -289,11 +292,11 @@ export const translations = {
     'misc.error': 'Feeler beim Lueden',
 
     // Landing (variant selector)
-    'landing.tagline': 'Burger-Spezialit\u00e9iten a Platen vum Dag — Lëtzebuerg',
-    'landing.variantA': 'Menu kucken — Variant A',
-    'landing.variantAHint': 'Allergenen direkt ugewisen',
-    'landing.variantB': 'Menu kucken — Variant B',
-    'landing.variantBHint': 'Allergenen an engem Modal',
+    'landing.tagline': 'Burger-Spezialit\u00e9iten a Platen vum Dag - L\u00ebtzebuerg',
+    'landing.weeklyMenu': 'Menu vun der Woch',
+    'landing.weeklyMenuHint': 'Platen vun der Woch a Gedr\u00e9nks',
+    'landing.permanentMenu': 'Permanente Menu',
+    'landing.permanentMenuHint': 'Ganz Kaart a Gedr\u00e9nks',
     'landing.themeHint': 'Wiesselt den hellen/donkelen Modus uewen riets',
   },
 } as const;

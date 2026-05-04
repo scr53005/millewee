@@ -43,7 +43,10 @@ export function useCreateWeeklySpecial() {
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to create');
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weekly-specials'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weekly-specials'] });
+      queryClient.invalidateQueries({ queryKey: ['menu', 'specials'] });
+    },
   });
 }
 
@@ -59,7 +62,10 @@ export function useUpdateWeeklySpecial() {
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to update');
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weekly-specials'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weekly-specials'] });
+      queryClient.invalidateQueries({ queryKey: ['menu', 'specials'] });
+    },
   });
 }
 
@@ -71,6 +77,9 @@ export function useDeleteWeeklySpecial() {
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to delete');
       return res.json();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['weekly-specials'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['weekly-specials'] });
+      queryClient.invalidateQueries({ queryKey: ['menu', 'specials'] });
+    },
   });
 }

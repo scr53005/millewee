@@ -94,10 +94,6 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     hiveAccount: getHiveAccount(),
     language,
     onCartClear: clearCart,
-    onCredentialsReceived: () => {
-      toast.success(t('account.created'));
-      setAccountName(localStorage.getItem('innopay_accountName'));
-    },
     onPaymentSuccess: (newBalance) => {
       updateBalance(newBalance);
     },

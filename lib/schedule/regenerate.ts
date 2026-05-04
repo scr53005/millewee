@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client';
+import type { Prisma, PrismaClient } from '@prisma/client';
 
 type PrismaTx = Pick<PrismaClient, 'services' | 'standard_week' | 'current_schedule' | '$transaction'>;
 
@@ -87,7 +87,7 @@ export async function regenerate(prisma: PrismaTx, weeks = 4): Promise<number> {
         data: {
           date: ins.date,
           day_of_week: ins.day_of_week,
-          resolved: ins.resolved as unknown as import('@prisma/client').Prisma.InputJsonValue,
+          resolved: ins.resolved as unknown as Prisma.InputJsonValue,
           source_standard_ids: ins.source_standard_ids,
         },
       }),

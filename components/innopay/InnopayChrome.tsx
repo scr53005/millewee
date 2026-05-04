@@ -28,8 +28,16 @@ export function InnopayChrome() {
         setWalletHidden(localStorage.getItem(WALLET_HIDDEN_KEY) === '1');
       }
     };
+    const onCredentialsUpdated = () => {
+      setAccountName(localStorage.getItem('innopay_accountName'));
+      setWalletHidden(localStorage.getItem(WALLET_HIDDEN_KEY) === '1');
+    };
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener('innopay:credentials-updated', onCredentialsUpdated);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('innopay:credentials-updated', onCredentialsUpdated);
+    };
   }, []);
 
   const { balance, source } = useBalance(accountName, { enabled: !!accountName });

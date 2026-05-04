@@ -140,6 +140,11 @@ export function useMenuSpecials() {
       if (!res.ok) throw new Error('Failed to fetch specials');
       return res.json();
     },
-    staleTime: 2 * 60 * 1000, // 2 min
+    // Owners edit weekly specials live from the admin dashboard. Keep this
+    // query fresh so the customer menu reflects changes immediately when
+    // returning from admin or refocusing the tab.
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: 'always',
   });
 }

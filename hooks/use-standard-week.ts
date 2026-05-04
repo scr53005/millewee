@@ -16,6 +16,10 @@ export interface StandardWeekRow {
   sun: string | null;
 }
 
+interface RegenerateScheduleResponse {
+  generated: number;
+}
+
 export function useStandardWeek() {
   return useQuery<StandardWeekRow[]>({
     queryKey: ['standard-week'],
@@ -49,8 +53,8 @@ export function useSaveStandardWeek() {
 
 export function useRegenerateSchedule() {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (weeks: number = 4) => {
+  return useMutation<RegenerateScheduleResponse, Error, number | undefined>({
+    mutationFn: async (weeks = 4) => {
       const res = await fetch('/api/admin/schedule/regenerate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

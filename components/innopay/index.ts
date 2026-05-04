@@ -12,3 +12,4 @@ export { default as StatusBanners } from './StatusBanners';
 export { default as ImportAccountModal } from './ImportAccountModal';
 export { default as GuestCheckoutModal } from './GuestCheckoutModal';
 export { InnopayChrome } from './InnopayChrome';
+export { PaymentReturnHost } from './PaymentReturnHost';
