@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 
 const playfairDisplay = Playfair_Display({
@@ -16,8 +17,22 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Café-Brasserie Millewee",
-  description: "Brasserie Millewee — Burgers, plats du jour et plus à Luxembourg Gasperich",
+  title: "Cafe-Brasserie Millewee",
+  description: "Brasserie Millewee - Burgers, plats du jour et plus a Luxembourg Gasperich",
+  icons: {
+    icon: "/images/favicon-48x48.png",
+    apple: "/logo2-512x512.PNG",
+  },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Millewee",
+  },
+};
+
+export const viewport = {
+  themeColor: "#111827",
 };
 
 export default function RootLayout({
@@ -36,6 +51,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <ServiceWorkerRegistration />
           {children}
         </ThemeProvider>
       </body>
