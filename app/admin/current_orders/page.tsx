@@ -3,10 +3,10 @@
  *
  * Polls merchant-hub for new transfers every 6s, hydrates memos against the menu,
  * groups multi-leg payments (EURO + optional HBD) by Distriate identifier, rings a
- * bell on new arrivals, and exposes a single "Servi" button to mark fulfilled.
+ * bell on new arrivals, auto-prints thermal tickets, and exposes a single "Servi"
+ * button to mark fulfilled.
  *
  * MVP scope (kept intentionally lean):
- *   - no thermal printer (no printing logic)
  *   - no delayed orders (data model supports P@/T@ timing but not displayed here)
  *
  * Call-waiter transfers are rendered with a red pulsing card and are never grouped.
@@ -39,7 +39,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import React from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Bell, BellOff, LogOut, Loader2, VolumeX, Volume2 } from 'lucide-react';
+import { Bell, BellOff, LogOut, Loader2, Printer, VolumeX, Volume2 } from 'lucide-react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import {
   hydrateMemo,
@@ -48,6 +48,7 @@ import {
   type MenuDataForHydration,
 } from '@/lib/innopay/utils';
 import { isRestaurantOpenNow } from '@/lib/config/kitchen-hours';
+import { generateReceiptHtml } from '@/lib/print-utils';
 
 interface RawTransfer {
   id: string;
@@ -113,6 +114,10 @@ function getTableFromMemo(memo: string): string | null {
   return match ? match[1] : null;
 }
 
+function getPrintKey(transfer: Transfer): string {
+  return extractDistriateIdentifier(transfer.memo) || transfer.memo || transfer.id;
+}
+
 function getMissingMenuWarnings(orderContent: string, menuData: MenuDataForHydration | null): string[] {
   if (!menuData?.loaded) return [];
 
@@ -160,6 +165,10 @@ export default function CurrentOrdersPage() {
   const wakeUpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hoursCheckTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const reminderTimersRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const printedRef = useRef<Set<string>>(new Set());
+  const printIframeRef = useRef<HTMLIFrameElement>(null);
+  const printQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const printOrderRef = useRef<(transfer: Transfer) => boolean>(() => false);
   const idleCyclesRef = useRef(0);
   const currentIntervalRef = useRef(POLL_MS);
   const pausedRef = useRef(false);
@@ -231,6 +240,110 @@ export default function CurrentOrdersPage() {
       return next;
     });
   }, []);
+
+  const enqueuePrint = useCallback((html: string) => {
+    printQueueRef.current = printQueueRef.current.then(() => new Promise<void>((resolve) => {
+      if (!printIframeRef.current) {
+        resolve();
+        return;
+      }
+
+      const iframe = printIframeRef.current;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc || !iframe.contentWindow) {
+        resolve();
+        return;
+      }
+
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      setTimeout(() => {
+        const win = iframe.contentWindow;
+        if (!win) {
+          resolve();
+          return;
+        }
+
+        let settled = false;
+        const done = () => {
+          if (settled) return;
+          settled = true;
+          win.removeEventListener('afterprint', done);
+          resolve();
+        };
+
+        win.addEventListener('afterprint', done);
+        setTimeout(done, 3000);
+        win.focus();
+        win.print();
+      }, 500);
+    }));
+  }, []);
+
+  const printOrder = useCallback((transfer: Transfer) => {
+    const isHydrated =
+      transfer.parsedMemo.length > 0 &&
+      transfer.parsedMemo[0].type !== 'raw';
+
+    if (!isHydrated && /\b[db]:\d+\b/.test(transfer.memo)) {
+      console.warn('[PRINT] Skipping print for unhydrated codified order:', transfer.id);
+      return false;
+    }
+
+    if (transfer.parsedMemo.length === 0) return false;
+
+    const dishes = transfer.parsedMemo.filter(
+      (item): item is Extract<HydratedOrderLine, { type: 'item' }> =>
+        item.type === 'item' && item.categoryType === 'dish',
+    );
+    const drinks = transfer.parsedMemo.filter(
+      (item): item is Extract<HydratedOrderLine, { type: 'item' }> =>
+        item.type === 'item' && item.categoryType === 'drink',
+    );
+
+    console.log('[PRINT] Printing order:', transfer.id);
+
+    if (dishes.length > 0) {
+      enqueuePrint(generateReceiptHtml({
+        id: transfer.id,
+        from_account: transfer.from_account,
+        memo: transfer.memo,
+        received_at: transfer.received_at,
+        items: dishes,
+        ticketType: 'CUISINE',
+      }));
+    }
+
+    if (drinks.length > 0) {
+      enqueuePrint(generateReceiptHtml({
+        id: transfer.id,
+        from_account: transfer.from_account,
+        memo: transfer.memo,
+        received_at: transfer.received_at,
+        items: drinks,
+        ticketType: 'BAR',
+      }));
+    }
+
+    if (dishes.length === 0 && drinks.length === 0) {
+      enqueuePrint(generateReceiptHtml({
+        id: transfer.id,
+        from_account: transfer.from_account,
+        memo: transfer.memo,
+        received_at: transfer.received_at,
+        items: transfer.parsedMemo,
+        ticketType: 'CUISINE',
+      }));
+    }
+
+    return true;
+  }, [enqueuePrint]);
+
+  useEffect(() => {
+    printOrderRef.current = printOrder;
+  }, [printOrder]);
 
   // --- Menu fetch for memo hydration ---
   useEffect(() => {
@@ -305,7 +418,16 @@ export default function CurrentOrdersPage() {
   // --- Re-hydrate when menu arrives ---
   useEffect(() => {
     if (menuData && transfers.length > 0) {
-      setTransfers((prev) => hydrate(prev));
+      const rehydrated = hydrate(transfers);
+      setTransfers(rehydrated);
+
+      for (const tx of rehydrated) {
+        const printKey = getPrintKey(tx);
+        if (!tx.isCallWaiter && !printedRef.current.has(printKey)) {
+          const success = printOrderRef.current(tx);
+          if (success) printedRef.current.add(printKey);
+        }
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menuData]);
@@ -335,6 +457,12 @@ export default function CurrentOrdersPage() {
         currentIntervalRef.current = POLL_MS;
         ringBellNow();
         for (const tx of newOnes) {
+          const printKey = getPrintKey(tx);
+          if (!tx.isCallWaiter && !printedRef.current.has(printKey)) {
+            const success = printOrderRef.current(tx);
+            if (success) printedRef.current.add(printKey);
+          }
+
           if (!reminderTimersRef.current.has(tx.id)) {
             const handle = setInterval(() => ringBellForOrder(tx.id), REMINDER_MS);
             reminderTimersRef.current.set(tx.id, handle);
@@ -602,6 +730,11 @@ export default function CurrentOrdersPage() {
   return (
     <div>
       <AdminHeader />
+      <iframe
+        ref={printIframeRef}
+        style={{ position: 'absolute', top: '-1000px', left: '-1000px', width: '0', height: '0' }}
+        title="print-frame"
+      />
       <div className="max-w-4xl mx-auto p-4">
         <header className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <h1 className="text-xl font-semibold text-gray-900">Commandes en cours</h1>
@@ -784,6 +917,19 @@ export default function CurrentOrdersPage() {
               )}
 
               <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const success = printOrder(primary);
+                    if (success) printedRef.current.add(getPrintKey(primary));
+                  }}
+                  className="px-3"
+                  aria-label="Imprimer la commande"
+                  title="Imprimer"
+                >
+                  <Printer className="h-4 w-4" />
+                </Button>
                 <Button
                   size="sm"
                   onClick={() => handleFulfill(allIds)}

@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-04-19
+**Last updated**: 2026-05-05
 
 ---
 
@@ -139,6 +139,10 @@ Customer-facing menu browsing and cart functionality. This is what restaurant gu
   - `DishesSection.tsx` passes `allergenDisplay` prop through to DishCard
 - [x] **Toast removal** — add-to-cart toasts commented out in DishCard, DrinkCard, WeeklySpecialsBanner (toast import retained as comment for potential re-enablement)
 - [x] **Landing menu split** — Hero page retained, but choices are now URL-driven: `?menu=weekly` shows weekly specials plus drinks/cart/call-waiter, `?menu=permanent` shows the former Variant B permanent menu
+- [x] **Landing i18n + language persistence** — hero copy is trilingual FR/EN/LB, flag buttons persist `millewee_lang` in localStorage and restore on next visit
+- [x] **Dev-only localStorage reset** — `DevClearStorageButton` added for private/dev hosts; clears Innopay/cart/flow test state while preserving table, menu, and language
+- [x] **Floating cart placement** — cart button no longer occupies the MiniWallet corner; it anchors near the categories area and composes with `Draggable`, with persisted position
+- [x] **PWA shell** — manifest, service worker, offline page, install icons, service-worker headers, and registration component added; production build verified
 
 ### Known issues / TODO
 
@@ -209,6 +213,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] UI components (`MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`, `WalletReopenButton.tsx`)
 - [x] `InnopayChrome.tsx` — host for MiniWallet + WalletReopenButton + BottomBanner, wired into customer layout
 - [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **Flows 3, 6, 8 tested in prod; 4, 5, 7 still to exercise**
+- [x] Flow 5 to Flow 7 existing-wallet return path — hub can return a credential token after using an existing wallet during create-account-and-pay; Millewee imports the wallet via `PaymentReturnHost`
 - [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **dedup modal not yet exercised**
 - [x] Flow 6 cooldown (12s post-payment) — implemented, **confirmed via Flow 6 prod test**
 - [x] Cart integration — CartSheet order button wired to `usePaymentFlow`
@@ -232,12 +237,15 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] Per-order card mute button with global-sound gating (group-atomic toggle) — implemented, **not yet tested**
 - [x] Sound-enable confirmation ring — verified in prod (via bell.mp3 fix)
 - [x] Merchant-hub wake-up call on page mount — verified in prod; since upgraded to full single-poller election (2026-04-19)
+- [x] CO memo hydration reliability fix — polling now uses the latest menu lookup, so newly arrived codified orders hydrate to DB dish/drink names without requiring a manual refresh
+- [x] CO hydration warnings — visible warning if the CO page cannot load menu data, or if an order memo references a dish/drink ID that is missing from the DB lookup
+- [x] Automatic thermal printing — lifted/adapted from indiesmenu: hidden iframe print queue, auto-print for new non-waiter orders, retry after menu hydration, separate CUISINE/BAR tickets, manual print button, and group-level print key to avoid duplicate prints
 
 ### Remaining
 
 - [x] ~~**BUG: Flow 3 success banner does not appear on return** from Stripe checkout~~ — resolved
 - [ ] Exercise Flows 4, 5, 7 end-to-end (Flows 3, 6, 8 verified in prod)
-- [ ] Test call-waiter, dedup modal, per-order mute
+- [ ] Test call-waiter, dedup modal, per-order mute, and thermal printer output on the real kitchen printer
 - [x] ~~Merchant-hub dashboard card for Millewee~~ — done
 - [x] ~~(carryover) Flow 6 EURO transfer memo missing order data~~ — fixed across all three spokes (2026-04-19)
 - [x] ~~(carryover) Flow 6 stale balance — needs fresh blockchain fetch + 10s cooldown between consecutive Flow 6 orders~~ — 12s cooldown + fresh balance fetch in place, verified via Flow 6 prod test
