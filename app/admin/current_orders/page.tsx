@@ -63,6 +63,7 @@ interface Transfer extends RawTransfer {
   parsedMemo: HydratedOrderLine[];
   isCallWaiter: boolean;
   table: string | null;
+  hydrationWarnings: string[];
 }
 
 interface GroupedOrder {
@@ -112,11 +113,36 @@ function getTableFromMemo(memo: string): string | null {
   return match ? match[1] : null;
 }
 
+function getMissingMenuWarnings(orderContent: string, menuData: MenuDataForHydration | null): string[] {
+  if (!menuData?.loaded) return [];
+
+  const warnings: string[] = [];
+  const seen = new Set<string>();
+  const matches = orderContent.matchAll(/\b([db]):(\d+)\b/g);
+
+  for (const match of matches) {
+    const type = match[1];
+    const id = Number(match[2]);
+    const key = `${type}:${id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    if (type === 'd' && !menuData.dishes.has(id)) {
+      warnings.push(`Plat #${id} introuvable dans la base menu`);
+    } else if (type === 'b' && !menuData.drinks.has(id)) {
+      warnings.push(`Boisson #${id} introuvable dans la base menu`);
+    }
+  }
+
+  return warnings;
+}
+
 export default function CurrentOrdersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
   const [menuData, setMenuData] = useState<MenuDataForHydration | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [menuError, setMenuError] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string>('');
   const [audioOn, setAudioOn] = useState(false);
   const [mutedOrders, setMutedOrders] = useState<Set<string>>(new Set());
@@ -137,6 +163,7 @@ export default function CurrentOrdersPage() {
   const idleCyclesRef = useRef(0);
   const currentIntervalRef = useRef(POLL_MS);
   const pausedRef = useRef(false);
+  const menuDataRef = useRef<MenuDataForHydration | null>(null);
 
   const isDev = process.env.NODE_ENV === 'development';
 
@@ -147,6 +174,10 @@ export default function CurrentOrdersPage() {
   useEffect(() => {
     mutedOrdersRef.current = mutedOrders;
   }, [mutedOrders]);
+
+  useEffect(() => {
+    menuDataRef.current = menuData;
+  }, [menuData]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -208,8 +239,8 @@ export default function CurrentOrdersPage() {
     async function loadMenu() {
       try {
         const [dishesRes, drinksRes] = await Promise.all([
-          fetch('/api/menu/dishes'),
-          fetch('/api/menu/drinks'),
+          fetch('/api/admin/dishes', { cache: 'no-store' }),
+          fetch('/api/admin/drinks', { cache: 'no-store' }),
         ]);
         if (!dishesRes.ok || !drinksRes.ok) throw new Error('menu fetch failed');
 
@@ -219,18 +250,21 @@ export default function CurrentOrdersPage() {
         if (cancelled) return;
 
         const dishMap = new Map<number, { dish_id: number; name: string }>();
-        for (const d of dishesJson.dishes || []) {
+        for (const d of dishesJson || []) {
           dishMap.set(d.dish_id, { dish_id: d.dish_id, name: d.name_fr });
         }
 
         const drinkMap = new Map<number, { drink_id: number; name: string }>();
-        for (const b of drinksJson.drinks || []) {
+        for (const b of drinksJson || []) {
           drinkMap.set(b.drink_id, { drink_id: b.drink_id, name: b.name_fr });
         }
 
         setMenuData({ dishes: dishMap, drinks: drinkMap, loaded: true });
+        setMenuError(null);
       } catch (err) {
-        console.error('[MENU] load error:', err);
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('[MENU] load error:', message);
+        setMenuError(message);
       }
     }
 
@@ -244,13 +278,14 @@ export default function CurrentOrdersPage() {
   const hydrate = useCallback(
     (raw: RawTransfer[]): Transfer[] => {
       return raw.map((tx) => {
+        const currentMenuData = menuDataRef.current;
         const tableIdx = tx.memo.lastIndexOf('TABLE ');
         const orderContent = tableIdx !== -1 ? tx.memo.substring(0, tableIdx).trim() : tx.memo;
         const isCallWaiter = detectCallWaiter(tx.memo);
 
         let parsedMemo: HydratedOrderLine[];
         try {
-          parsedMemo = hydrateMemo(orderContent, menuData ?? undefined);
+          parsedMemo = hydrateMemo(orderContent, currentMenuData ?? undefined);
         } catch {
           parsedMemo = [{ type: 'raw', content: orderContent }];
         }
@@ -260,10 +295,11 @@ export default function CurrentOrdersPage() {
           parsedMemo,
           isCallWaiter,
           table: getTableFromMemo(tx.memo),
+          hydrationWarnings: getMissingMenuWarnings(orderContent, currentMenuData),
         };
       });
     },
-    [menuData],
+    [],
   );
 
   // --- Re-hydrate when menu arrives ---
@@ -332,7 +368,12 @@ export default function CurrentOrdersPage() {
       setTransfers((prev) => {
         if (
           prev.length === hydrated.length &&
-          prev.every((p, i) => p.id === hydrated[i].id && p.memo === hydrated[i].memo)
+          prev.every((p, i) =>
+            p.id === hydrated[i].id &&
+            p.memo === hydrated[i].memo &&
+            JSON.stringify(p.parsedMemo) === JSON.stringify(hydrated[i].parsedMemo) &&
+            p.hydrationWarnings.join('|') === hydrated[i].hydrationWarnings.join('|'),
+          )
         ) {
           return prev;
         }
@@ -598,6 +639,12 @@ export default function CurrentOrdersPage() {
           Erreur: {error}
         </div>
       )}
+      {menuError && (
+        <div className="bg-amber-50 border border-amber-300 text-amber-800 px-3 py-2 rounded mb-3 text-sm">
+          Attention: impossible de charger les noms des plats/boissons depuis la base menu ({menuError}).
+          Les commandes peuvent afficher des libell&eacute;s techniques comme &laquo;&nbsp;Plat #3&nbsp;&raquo;.
+        </div>
+      )}
       {isDev && (syncInfo || pollerStatus) && (
         <div className="text-xs mb-2 inline-block bg-gray-100 px-2 py-1 rounded space-x-2">
           {pollerStatus && (
@@ -674,6 +721,11 @@ export default function CurrentOrdersPage() {
                     </React.Fragment>
                   ))}
                 </div>
+                {primary.hydrationWarnings.length > 0 && (
+                  <div className="mt-2 rounded border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                    Attention: {primary.hydrationWarnings.join(' ; ')}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs text-gray-700 mb-2">
