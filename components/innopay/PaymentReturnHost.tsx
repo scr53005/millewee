@@ -80,6 +80,7 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
     const topupSuccess = searchParams.get('topup_success');
     const sessionId = searchParams.get('session_id');
     const credentialToken = searchParams.get('credential_token');
+    const flowParam = searchParams.get('flow');
     const error = searchParams.get('error');
 
     const isReturn =
@@ -143,7 +144,8 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
               const currentFlow = localStorage.getItem('innopay_flow_pending');
               if (
                 currentFlow === 'flow4_create_account_only' ||
-                (currentFlow === 'flow5_create_and_pay' && sessionId)
+                (currentFlow === 'flow5_create_and_pay' && sessionId) ||
+                flowParam === '7'
               ) {
                 localStorage.setItem(
                   'innopay_balance_trustUntil',
