@@ -4,15 +4,27 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, LogOut, ClipboardList } from 'lucide-react';
+import {
+  AlertTriangle,
+  Calendar,
+  ClipboardList,
+  Clock,
+  History,
+  LogOut,
+  Tags,
+  UtensilsCrossed,
+  Wine,
+} from 'lucide-react';
 
 const navCards = [
-  { title: 'Commandes en cours', description: 'Commandes reçues à servir', href: '/admin/current_orders', icon: ClipboardList },
-  { title: 'Catégories', description: 'Gérer les catégories', href: '/admin/categories', icon: Tags },
-  { title: 'Plats', description: 'Gérer les plats et variantes', href: '/admin/dishes', icon: UtensilsCrossed },
-  { title: 'Boissons', description: 'Gérer les boissons et tailles', href: '/admin/drinks', icon: Wine },
-  { title: 'Allergènes', description: 'Matrice allergènes / plats', href: '/admin/allergens', icon: AlertTriangle },
-  { title: 'Plats de la Semaine', description: 'Gérer les plats du jour', href: '/admin/weekly-specials', icon: Calendar },
+  { title: 'Commandes en cours', description: 'Commandes recues a servir', href: '/admin/current_orders', icon: ClipboardList },
+  { title: 'Historique', description: 'Commandes deja servies', href: '/admin/history', icon: History },
+  { title: 'Categories', description: 'Gerer les categories', href: '/admin/categories', icon: Tags },
+  { title: 'Plats', description: 'Gerer les plats et variantes', href: '/admin/dishes', icon: UtensilsCrossed },
+  { title: 'Boissons', description: 'Gerer les boissons et tailles', href: '/admin/drinks', icon: Wine },
+  { title: 'Allergenes', description: 'Matrice allergenes / plats', href: '/admin/allergens', icon: AlertTriangle },
+  { title: 'Plats de la Semaine', description: 'Gerer les plats du jour', href: '/admin/weekly-specials', icon: Calendar },
+  { title: 'Horaires', description: 'Services et heures d ouverture', href: '/admin/opening-hours', icon: Clock },
 ];
 
 export default function AdminDashboard() {
@@ -28,11 +40,11 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Administration</h1>
-          <p className="text-sm text-gray-500">Café-Brasserie Millewee</p>
+          <p className="text-sm text-gray-500">Cafe-Brasserie Millewee</p>
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout} className="text-gray-500 hover:text-gray-700">
           <LogOut className="h-4 w-4 mr-1" />
-          Déconnexion
+          Deconnexion
         </Button>
       </div>
 

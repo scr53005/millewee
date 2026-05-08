@@ -1,12 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AvailabilityToggle } from '@/components/admin/AvailabilityToggle';
 import {
   useServices,
@@ -518,23 +517,47 @@ function HorairesTab() {
 
 export default function OpeningHoursPage() {
   const [tab, setTab] = useState<'horaires' | 'services'>('horaires');
+  const tabButtonStyle = (active: boolean): CSSProperties => ({
+    display: 'inline-block',
+    minWidth: '96px',
+    padding: '10px 16px',
+    marginRight: '8px',
+    border: active ? '2px solid #d4a24e' : '1px solid #9ca3af',
+    borderRadius: '4px',
+    backgroundColor: active ? '#fdf6e9' : '#ffffff',
+    color: '#111827',
+    fontWeight: active ? 700 : 600,
+    fontSize: '16px',
+    lineHeight: '20px',
+    textAlign: 'center',
+    cursor: 'pointer',
+    WebkitAppearance: 'none',
+    appearance: 'none',
+  });
 
   return (
     <div>
       <AdminHeader />
       <div className="max-w-5xl mx-auto p-4">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'horaires' | 'services')}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="horaires">Horaires</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-          </TabsList>
-          <TabsContent value="horaires">
-            <HorairesTab />
-          </TabsContent>
-          <TabsContent value="services">
-            <ServicesTab />
-          </TabsContent>
-        </Tabs>
+        <div style={{ marginBottom: '16px' }} role="tablist" aria-label="Navigation horaires">
+          <button
+            type="button"
+            style={tabButtonStyle(tab === 'horaires')}
+            onClick={() => setTab('horaires')}
+            aria-pressed={tab === 'horaires'}
+          >
+            Horaires
+          </button>
+          <button
+            type="button"
+            style={tabButtonStyle(tab === 'services')}
+            onClick={() => setTab('services')}
+            aria-pressed={tab === 'services'}
+          >
+            Services
+          </button>
+        </div>
+        {tab === 'horaires' ? <HorairesTab /> : <ServicesTab />}
       </div>
     </div>
   );

@@ -191,8 +191,8 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 **Reference**: Followed `SPOKE-DOCUMENTATION.md` (Next.js + Prisma spoke path). Backend patterns copied from indiesmenu, state-machine style from croque-bedaine.
 
-> **Testing status (2026-04-19)**: Deployed to prod. Verified end-to-end: **Flow 3** (guest checkout), **Flow 6** (external wallet → HBD sweep), **Flow 8** (import existing account). Still to exercise: Flows 4 (Stripe topup), 5 (account creation + pay), 7 (wallet topup from Stripe); call-waiter; duplicate-order modal; per-order mute.
-> Verified working on the CO page: 30s per-order reminder, merchant-hub wake-up, fulfill workflow, late-threshold amber card.
+> **Testing status (2026-05-07)**: Deployed to prod/dev and partially exercised. Verified end-to-end: **Flow 3** (guest checkout), **Flow 5** (account creation + pay), **Flow 6** (external wallet → HBD sweep), **Flow 7** (wallet topup from Stripe / existing-wallet return), **Flow 8** (import existing account). Still to exercise: Flow 4 (Stripe topup without order); call-waiter; duplicate-order modal; per-order mute.
+> Verified working on the CO page: 30s per-order reminder, merchant-hub wake-up, fulfill workflow, late-threshold amber card, and automatic thermal printing implementation.
 
 ### Key decisions (April 2026)
 
@@ -212,7 +212,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 - [x] Payment hooks (`hooks/innopay/usePaymentFlow.ts`, `useInnopayCart.ts`, `useBalance.ts`)
 - [x] UI components (`MiniWallet.tsx`, `BottomBanner.tsx`, `WalletNotificationBanner.tsx`, `ImportAccountModal.tsx`, `WalletReopenButton.tsx`)
 - [x] `InnopayChrome.tsx` — host for MiniWallet + WalletReopenButton + BottomBanner, wired into customer layout
-- [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **Flows 3, 6, 8 tested in prod; 4, 5, 7 still to exercise**
+- [x] All payment flows wired (Flow 3 guest, Flow 5 account+pay, Flow 6 wallet, Flow 7 topup, Flow 8 import) — **Flows 3, 5, 6, 7, 8 tested; Flow 4 still to exercise**
 - [x] Flow 5 to Flow 7 existing-wallet return path — hub can return a credential token after using an existing wallet during create-account-and-pay; Millewee imports the wallet via `PaymentReturnHost`
 - [x] Guardrails (L1 account link, L2 pulsing, L3 dedup modal) — implemented, **dedup modal not yet exercised**
 - [x] Flow 6 cooldown (12s post-payment) — implemented, **confirmed via Flow 6 prod test**
@@ -244,11 +244,44 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 ### Remaining
 
 - [x] ~~**BUG: Flow 3 success banner does not appear on return** from Stripe checkout~~ — resolved
-- [ ] Exercise Flows 4, 5, 7 end-to-end (Flows 3, 6, 8 verified in prod)
-- [ ] Test call-waiter, dedup modal, per-order mute, and thermal printer output on the real kitchen printer
+- [x] ~~Exercise Flows 5 and 7 end-to-end~~ — tested successfully
+- [x] ~~Implement automatic thermal printer output on CO page~~ — implemented via indiesmenu lift-and-shift/adaptation
 - [x] ~~Merchant-hub dashboard card for Millewee~~ — done
 - [x] ~~(carryover) Flow 6 EURO transfer memo missing order data~~ — fixed across all three spokes (2026-04-19)
 - [x] ~~(carryover) Flow 6 stale balance — needs fresh blockchain fetch + 10s cooldown between consecutive Flow 6 orders~~ — 12s cooldown + fresh balance fetch in place, verified via Flow 6 prod test
+
+### Prioritized backlog
+
+1. **Admin opening-hours page / dashboard entry** — implemented 2026-05-07
+   - Dashboard card added for `/admin/opening-hours`.
+   - "Horaires" / "Services" tab controls replaced with conservative native buttons using explicit colors and no Base UI/Tabs styling.
+   - Goal: avoid invisible tab controls on older tablet browsers.
+
+2. **Admin history page** — implemented 2026-05-07
+   - Added `/admin/history` page and `/api/orders/history`.
+   - Added dashboard card and direct access button/link from the CO page.
+   - Uses fulfilled orders, hydrated memos, day grouping, load-more paging, and kitchen-friendly navigation.
+
+3. **Restaurant hours vs kitchen hours model**
+   - Indiesmenu and croque-bedaine hardcode separate `RESTAURANT_HOURS` and `KITCHEN_SCHEDULE` in `kitchen-hours.ts`.
+   - Millewee is DB/config driven (`services`, `standard_week`, `current_schedule`) and can already represent multiple time windows, but it does **not** currently classify whether a service is restaurant-wide, kitchen-only, drinks/bar-only, etc.
+   - Before implementing, decide whether to upgrade the Prisma model with a service scope/type field (for example `scope: "restaurant" | "kitchen" | "bar"`) or introduce a separate restaurant-hours table.
+   - Goal: restaurant open/closed should control general ordering/admin polling; kitchen open/closed should control dish availability and delayed-order slot generation; drinks may remain available during restaurant hours even when kitchen is closed.
+
+4. **Accounting / reporting page**
+   - Lift/adapt `admin/reporting` from indiesmenu; compare croque-bedaine first because it should be close.
+   - Add dashboard card and required API/support code.
+   - Preserve HBD/EUR export behavior (date range, totals, CSV/PDF).
+
+5. **Logo dark-mode compatibility**
+   - Create explicit light/dark logo PNG assets (likely via Pillow) instead of relying on `dark:brightness-0 dark:invert`.
+   - Swap assets in hero and menu header with `dark:hidden` / `hidden dark:block`.
+
+### Remaining tests
+
+- [ ] Exercise Flow 4 end-to-end (Stripe topup without order)
+- [ ] Test call-waiter, dedup modal, and per-order mute
+- [ ] Test thermal printer output on the real kitchen printer
 
 ---
 

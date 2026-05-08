@@ -37,9 +37,10 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import React from 'react';
+import Link from 'next/link';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Bell, BellOff, LogOut, Loader2, Printer, VolumeX, Volume2 } from 'lucide-react';
+import { Button, buttonVariants } from '@/components/ui/button';
+import { Bell, BellOff, History, LogOut, Loader2, Printer, VolumeX, Volume2 } from 'lucide-react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import {
   hydrateMemo,
@@ -752,6 +753,10 @@ export default function CurrentOrdersPage() {
               <LogOut className="h-4 w-4 mr-1" />
               Sortir
             </Button>
+            <Link href="/admin/history" className={buttonVariants({ variant: 'outline', size: 'sm' })}>
+              <History className="h-4 w-4 mr-1" />
+              Historique
+            </Link>
           </div>
         </header>
 

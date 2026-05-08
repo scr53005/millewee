@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, ClipboardList, UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, Clock } from 'lucide-react';
+import { Home, ClipboardList, UtensilsCrossed, Wine, Tags, AlertTriangle, Calendar, Clock, History } from 'lucide-react';
 
 const navItems = [
   { title: 'Accueil', href: '/admin', icon: Home, exact: true },
   { title: 'Commandes', href: '/admin/current_orders', icon: ClipboardList },
+  { title: 'Historique', href: '/admin/history', icon: History },
   { title: 'Catégories', href: '/admin/categories', icon: Tags },
   { title: 'Plats', href: '/admin/dishes', icon: UtensilsCrossed },
   { title: 'Boissons', href: '/admin/drinks', icon: Wine },
