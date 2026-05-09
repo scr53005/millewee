@@ -145,7 +145,15 @@ export function createEuroTransferOperation(
 }
 
 /**
- * Signs and broadcasts a Hive operation using the active key
+ * Signs and broadcasts a Hive operation using the active key — client-side.
+ *
+ * NOTE: As of 2026-05-09 this function is no longer called by the active
+ * payment flow. Both order payments (Flow 6) and call-waiter requests now
+ * route through the hub's `/api/sign-and-broadcast` endpoint, which signs
+ * server-side. This function is kept as a documented fallback in case a
+ * future flow needs purely client-side signing without depending on the hub,
+ * but if it stays unused, both this function and `@hiveio/dhive` can be
+ * removed in a follow-up cleanup.
  */
 export async function signAndBroadcastOperation(
   operation: Record<string, any>,

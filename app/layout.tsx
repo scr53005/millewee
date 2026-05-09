@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Playfair_Display, DM_Sans } from "next/font/google";
 import { ThemeProvider } from "@/app/providers/ThemeProvider";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import ErudaDebug from "@/components/ErudaDebug";
 import "./globals.css";
 
 const playfairDisplay = Playfair_Display({
@@ -52,6 +53,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <ServiceWorkerRegistration />
+          <ErudaDebug />
           {children}
         </ThemeProvider>
       </body>

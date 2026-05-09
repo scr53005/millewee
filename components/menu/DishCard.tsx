@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
+import { useScheduleStatus } from '@/hooks/use-current-schedule';
 import { type MenuDish } from '@/hooks/use-menu';
 import { type CartItemDish } from '@/lib/cart/types';
 import { AllergenIcons } from './AllergenIcons';
@@ -28,6 +29,7 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
   );
   const { t, localized } = useI18n();
   const { addItem } = useCart();
+  const { kitchenOpen } = useScheduleStatus();
 
   const discount = dish.discount ?? 1.0;
   const hasDiscount = discount < 1.0;
@@ -73,6 +75,7 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
   // Quick add (collapsed mode, no variants)
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!kitchenOpen) return;
     if (dish.has_variants && dish.variants.length > 1) {
       setExpanded(true);
       return;
@@ -118,8 +121,10 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-primary hover:bg-primary/10"
+            className="h-8 w-8 text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleQuickAdd}
+            disabled={!kitchenOpen}
+            title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
           >
             <Plus className="h-4 w-4" />
           </Button>
@@ -191,6 +196,8 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
               size="sm"
               className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
               onClick={handleAdd}
+              disabled={!kitchenOpen}
+              title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
             >
               <Plus className="h-4 w-4 mr-1" />
               {t('cart.add')} — {finalPrice.toFixed(2)} {'\u20ac'}

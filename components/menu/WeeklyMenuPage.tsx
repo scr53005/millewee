@@ -9,6 +9,8 @@ import { MenuHeader } from './MenuHeader';
 import { DrinksSection } from './DrinksSection';
 import { FloatingCartButton } from './FloatingCartButton';
 import { CartSheet } from './CartSheet';
+import { ScheduleClosedBanner } from './ScheduleClosedBanner';
+import { useScheduleStatus } from '@/hooks/use-current-schedule';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Plus, Sparkles, UtensilsCrossed, Wine } from 'lucide-react';
@@ -25,6 +27,7 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
   const { t, localized } = useI18n();
   const { addItem } = useCart();
   const { data: specials = [], isLoading, isError } = useMenuSpecials();
+  const { kitchenOpen } = useScheduleStatus();
 
   const handleAdd = (special: (typeof specials)[0]) => {
     const dish = special.dish;
@@ -46,6 +49,7 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
   return (
     <div className="min-h-screen bg-background">
       <MenuHeader onCartOpen={() => setCartOpen(true)} onLogoClick={onBackToHero} />
+      <ScheduleClosedBanner />
 
       <div className="sticky top-[57px] z-25 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex max-w-4xl mx-auto">
@@ -149,9 +153,11 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
                         size="sm"
                         className="w-full"
                         onClick={() => handleAdd(special)}
+                        disabled={!kitchenOpen}
+                        title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
                       >
                         <Plus className="h-4 w-4 mr-1" />
-                        {t('cart.add')}
+                        {kitchenOpen ? t('cart.add') : t('schedule.kitchenClosed')}
                       </Button>
                     </article>
                   );

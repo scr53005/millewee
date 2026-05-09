@@ -91,6 +91,12 @@ export const translations = {
     'misc.loading': 'Chargement...',
     'misc.error': 'Erreur de chargement',
 
+    // Schedule (opening hours)
+    'schedule.restaurantClosed': 'Restaurant fermé',
+    'schedule.kitchenClosed': 'Cuisine fermée',
+    'schedule.reopensAt': 'Réouverture à {time}',
+    'schedule.reopensOn': 'Réouverture {day} à {time}',
+
     // Landing (variant selector)
     'landing.tagline': 'Sp\u00e9cialit\u00e9s de burgers et plats du jour - Luxembourg',
     'landing.weeklyMenu': 'Menu de la semaine',
@@ -191,6 +197,12 @@ export const translations = {
     'misc.loading': 'Loading...',
     'misc.error': 'Loading error',
 
+    // Schedule (opening hours)
+    'schedule.restaurantClosed': 'Restaurant closed',
+    'schedule.kitchenClosed': 'Kitchen closed',
+    'schedule.reopensAt': 'Reopens at {time}',
+    'schedule.reopensOn': 'Reopens {day} at {time}',
+
     // Landing (variant selector)
     'landing.tagline': 'Burger specialties and daily specials - Luxembourg',
     'landing.weeklyMenu': 'Weekly menu',
@@ -290,6 +302,12 @@ export const translations = {
     // Misc
     'misc.loading': 'Lueden...',
     'misc.error': 'Feeler beim Lueden',
+
+    // Schedule (opening hours)
+    'schedule.restaurantClosed': 'Restaurant zou',
+    'schedule.kitchenClosed': 'Kichen zou',
+    'schedule.reopensAt': 'Mécht erëm op um {time}',
+    'schedule.reopensOn': 'Mécht erëm op {day} um {time}',
 
     // Landing (variant selector)
     'landing.tagline': 'Burger-Spezialit\u00e9iten a Platen vum Dag - L\u00ebtzebuerg',

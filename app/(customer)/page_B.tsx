@@ -8,6 +8,7 @@ import { DishesSection } from '@/components/menu/DishesSection';
 import { DrinksSection } from '@/components/menu/DrinksSection';
 import { FloatingCartButton } from '@/components/menu/FloatingCartButton';
 import { CartSheet } from '@/components/menu/CartSheet';
+import { ScheduleClosedBanner } from '@/components/menu/ScheduleClosedBanner';
 import { UtensilsCrossed, Wine } from 'lucide-react';
 
 type MenuTab = 'dishes' | 'drinks';
@@ -24,6 +25,7 @@ export function MenuPageB({ onToggleVariant }: MenuPageBProps = {}) {
   return (
     <div className="min-h-screen bg-background">
       <MenuHeader onCartOpen={() => setCartOpen(true)} onLogoClick={onToggleVariant} />
+      <ScheduleClosedBanner />
 
       {/* Dishes / Drinks toggle */}
       <div className="sticky top-[57px] z-25 bg-background/95 backdrop-blur-sm border-b border-border">

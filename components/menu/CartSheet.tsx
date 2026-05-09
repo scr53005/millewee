@@ -23,6 +23,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
 import { useWalletPulse } from '@/hooks/use-wallet-pulse';
+import { useScheduleStatus } from '@/hooks/use-current-schedule';
 import { useInnopayCart } from '@/hooks/innopay/useInnopayCart';
 import { usePaymentFlow } from '@/hooks/innopay/usePaymentFlow';
 import { useBalance } from '@/hooks/innopay/useBalance';
@@ -62,7 +63,19 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { language, t } = useI18n();
   const { items, removeItem, updateQuantity, updateComment, clearCart, totalPrice } = useCart();
   const { startOrderPulsing } = useWalletPulse();
+  const { restaurantOpen, kitchenOpen } = useScheduleStatus();
   const { table, getMemo } = useInnopayCart();
+
+  const cartHasDishes = useMemo(() => items.some((i) => i.item.type === 'dish'), [items]);
+  // Interim block (Phase B): if restaurant is closed, no orders. If kitchen is closed
+  // but the cart has dishes, refuse the order. Drinks-only carts are still allowed
+  // when the kitchen is closed (restaurant remains open). Delayed-orders UX will
+  // replace this gate later.
+  const scheduleBlocked: 'restaurant' | 'kitchen' | null = !restaurantOpen
+    ? 'restaurant'
+    : !kitchenOpen && cartHasDishes
+      ? 'kitchen'
+      : null;
 
   // Read account name once and keep it reactive across tabs via the storage event
   const [accountName, setAccountName] = useState<string | null>(() => {
@@ -154,6 +167,15 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const handleOrder = useCallback(async () => {
     if (items.length === 0 || flow6Cooldown > 0) return;
 
+    if (scheduleBlocked === 'restaurant') {
+      toast.error(t('schedule.restaurantClosed'));
+      return;
+    }
+    if (scheduleBlocked === 'kitchen') {
+      toast.error(t('schedule.kitchenClosed'));
+      return;
+    }
+
     setIsCallWaiterFlow(false);
     onOpenChange(false);
 
@@ -166,7 +188,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     } else {
       actions.openFlowSelector();
     }
-  }, [items.length, flow6Cooldown, hasAccount, balance, totalPrice, actions, onOpenChange]);
+  }, [items.length, flow6Cooldown, scheduleBlocked, t, hasAccount, balance, totalPrice, actions, onOpenChange]);
 
   const handleCallWaiterClick = useCallback(() => {
     onOpenChange(false);
@@ -358,7 +380,19 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
               <Button
                 className="flex-1"
                 onClick={handleOrder}
-                disabled={items.length === 0 || ui.isLoading || flow6Cooldown > 0}
+                disabled={
+                  items.length === 0 ||
+                  ui.isLoading ||
+                  flow6Cooldown > 0 ||
+                  scheduleBlocked !== null
+                }
+                title={
+                  scheduleBlocked === 'restaurant'
+                    ? t('schedule.restaurantClosed')
+                    : scheduleBlocked === 'kitchen'
+                      ? t('schedule.kitchenClosed')
+                      : undefined
+                }
               >
                 {orderButtonContent}
               </Button>

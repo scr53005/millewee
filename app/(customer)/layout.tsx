@@ -8,6 +8,7 @@ import { TableDetector } from '@/components/menu/TableDetector';
 import { InnopayChrome, PaymentReturnHost } from '@/components/innopay';
 import { Toaster } from '@/components/ui/sonner';
 import { DevClearStorageButton } from '@/components/DevClearStorageButton';
+import { CurrentScheduleLoader } from '@/hooks/use-current-schedule';
 
 export default function CustomerLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,6 +17,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
         <CartProvider>
           <WalletPulseProvider>
             <TableDetector>
+              <CurrentScheduleLoader />
               {children}
               <PaymentReturnHost />
               <InnopayChrome />

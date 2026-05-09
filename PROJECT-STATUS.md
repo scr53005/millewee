@@ -243,6 +243,10 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 ### Remaining
 
+- [ ] **BUG: Call-waiter fails on the Flow-6-like path** (reported 2026-05-09)
+  - Symptom: with a local wallet imported and balance ≥ 0, clicking the bell button shows the yellow "Paiement en cours" banner briefly, then a grey "Erreur technique" banner. The waiter call never reaches the CO page.
+  - Suspected area: `actions.callWaiter()` in `usePaymentFlow` takes the same code path as Flow 6 (local-signed transfer), and likely fails the same way Flow 6 used to before the cooldown / fresh-balance work — but tailored differently because there is no cart memo. Worth checking the memo construction in `useInnopayCart.getMemo()` for the call-waiter case + the `payWithAccount` vs `callWaiter` divergence.
+  - Reproducer: indies-style local wallet (any account with HBD ≥ ~0), open menu, no cart items, click bell, enter reason, send. Banner cycle observed in PROD.
 - [x] ~~**BUG: Flow 3 success banner does not appear on return** from Stripe checkout~~ — resolved
 - [x] ~~Exercise Flows 5 and 7 end-to-end~~ — tested successfully
 - [x] ~~Implement automatic thermal printer output on CO page~~ — implemented via indiesmenu lift-and-shift/adaptation
@@ -298,14 +302,34 @@ Cross-cutting admin tooling under `/admin/*`. Reuses Phase 2's auth (`proxy.ts`)
   - **Seed**:
     - `seedOpeningHours()` now creates three services: Ouverture (restaurant, Mon–Sun 10:00–23:59), Déjeuner (kitchen, Mon–Sat 11:45–14:00, Sun closed), Dîner (kitchen, Mon–Sat 18:00–22:00, Sun closed). Destructive — wipes and reseeds, idempotency not needed.
 
+- [x] **Restaurant vs kitchen hours — Phase B: customer-side gate (interim block)** (2026-05-09)
+  - Module-level `current_schedule` cache + React Query loader (`<CurrentScheduleLoader />`) mounted in the customer layout root, populated inside the queryFn so synchronous helpers see fresh values on the first render after data arrives.
+  - Synchronous helpers in `hooks/use-current-schedule.ts`: `isRestaurantOpen`, `isKitchenOpen`, `getKitchenCloseTime`, `getNextKitchenOpening`, `getNextOpenDay`, `getValidTimeSlots(requireKitchen)`, plus a convenience `useScheduleStatus()` that subscribes + returns derived booleans. Dev bypass on `localhost` / `127.0.0.1` / `192.168.*` (mirrors indies/CB pattern).
+  - UX wiring (interim — not the indies/CB delayed-order experience yet):
+    - `ScheduleClosedBanner` rendered above the menu in both `MenuPageB` and `WeeklyMenuPage`. Red banner when restaurant closed, amber banner when kitchen closed but restaurant open.
+    - DishCard quick-add (+) and expanded "Ajouter" buttons disabled + tooltip when kitchen is closed.
+    - Weekly-special add buttons disabled + label switches to "Cuisine fermée" when kitchen is closed.
+    - CartSheet `handleOrder` gated: blocks submission with toast when restaurant closed, refuses dish-containing carts with toast when kitchen closed (drinks-only carts still allowed). Order button disabled accordingly.
+  - Trilingual i18n keys added: `schedule.restaurantClosed`, `schedule.kitchenClosed`, `schedule.reopensAt`, `schedule.reopensOn`.
+
 ### Remaining
 
-- [ ] **Restaurant vs kitchen hours — Phase B: customer-side gate**
-  - Module-level `current_schedule` cache + React Query loader (`<CurrentScheduleLoader />`) mounted in the customer layout root.
-  - Synchronous helpers in `lib/hooks/useCurrentSchedule.ts`: `isRestaurantOpen`, `isKitchenOpen`, `getKitchenCloseTime`, `getNextOpenDay`, `getValidTimeSlots(requireKitchen)`. Dev bypass on localhost / 192.168.* (mirrors indies/CB pattern).
-  - UX wiring: closed banner on the menu when restaurant closed; dish "Indisponible" disabled state when kitchen closed but restaurant open; cart submission blocked when restaurant closed; drinks-only carts still allowed when kitchen closed but restaurant open.
-  - Verification matrix in `crackling-simmering-saucepan.md` (kitchen-closed banner, Sunday closed, dev bypass, cache refresh).
-  - Once Phase B is proven in millewee, retrofit indiesmenu (iter 1b) and croque-bedaine (iter 1c) per `synthetic-doodling-star.md`.
+- [ ] **Delayed orders — full UX port from indies / croque-bedaine**
+  - Replace the interim block (above) with the indies/CB pattern: when kitchen is closed (or the customer wants to schedule), open a `DelayedOrderPanel` with a time picker that only emits kitchen-open slots from `getValidTimeSlots(requireKitchen=true)`. Drinks remain in the broader restaurant-hours window.
+  - **Scope**:
+    - `TimeWheelPicker.tsx` (CB-style scrolling HH/MM wheel) — clock face / pickerm; CB has the canonical version. `clock.png` already present in `public/images/` for the visual.
+    - `DelayedOrderPanel.tsx` (date + time picker + service window indicator).
+    - `CartItem.delayedTiming?: DelayedTiming` field — already extensible per current `lib/cart/types.ts`.
+    - Memo encoding `P@<datetime>` (pickup) / `T@<datetime>` (table-served) plumbed through `useInnopayCart.getMemo()`.
+    - CartSheet UX: detect mixed cart (some delayed, some immediate) and warn; block "Commander" until all dishes have a target time when kitchen is closed.
+    - CO page: two-column / sidebar split (live queue left, delayed list right), with delayed orders promoting to live as their time approaches. Lift the indies/CB layout.
+    - Banners updated: "Cuisine fermée. Commande programmée pour 18:00."
+  - Once landed in millewee, the same surface ports cleanly to indies (iter 1b) and croque (iter 1c) since they already have most of the components.
+
+- [ ] **Accounting / reporting page**
+  - Lift/adapt `admin/reporting` from indiesmenu; compare croque-bedaine first because it should be close.
+  - Add dashboard card and required API/support code.
+  - Preserve HBD/EUR export behavior (date range, totals, CSV/PDF).
 
 - [ ] **Accounting / reporting page**
   - Lift/adapt `admin/reporting` from indiesmenu; compare croque-bedaine first because it should be close.

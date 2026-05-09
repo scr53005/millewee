@@ -55,9 +55,9 @@ const messages: Record<Language, {
     waiterCalling: 'Appel en cours...',
     paying: 'Paiement en cours...',
     finalizing: 'Finalisation de la commande...',
-    orderTransmitted: 'Votre commande a Ã©tÃ© transmise en cuisine!',
-    accountCreatedAndOrder: 'Compte crÃ©Ã© et commande transmise!',
-    processorTimeout: 'Le processeur de paiements ne rÃ©pond pas. Veuillez rÃ©essayer ou contacter contact@innopay.lu',
+    orderTransmitted: 'Votre commande a été transmise en cuisine!',
+    accountCreatedAndOrder: 'Compte créé et commande transmise!',
+    processorTimeout: 'Le processeur de paiements ne répond pas. Veuillez réessayer ou contacter contact@innopay.lu',
     paymentError: 'Erreur lors du paiement. Veuillez contacter contact@innopay.lu',
     waiterCallFailed: "Echec de l'appel serveur",
     finalizationError: 'Une erreur est survenue lors de la finalisation',
@@ -79,10 +79,10 @@ const messages: Record<Language, {
     waiterCalling: 'Kellner g\u00ebtt geruff...',
     paying: 'Bezuelung leeft...',
     finalizing: 'Bestellung g\u00ebtt ofgeschloss...',
-    orderTransmitted: '\u00c4r Bestellung gouf an d\'Kichen geschÃ©ckt!',
+    orderTransmitted: '\u00c4r Bestellung gouf an d\'Kichen geschéckt!',
     accountCreatedAndOrder: 'Kont erstallt a Bestellung iwwerdroen!',
-    processorTimeout: 'De Bezuelungsprozessor \u00e4ntwert net. ProbÃ©iert nach eng KÃ©ier oder kontaktÃ©iert contact@innopay.lu',
-    paymentError: 'Bezuelungsfehler. KontaktÃ©iert w.e.g. contact@innopay.lu',
+    processorTimeout: 'De Bezuelungsprozessor \u00e4ntwert net. Probéiert nach eng Kéier oder kontaktéiert contact@innopay.lu',
+    paymentError: 'Bezuelungsfehler. Kontaktéiert w.e.g. contact@innopay.lu',
     waiterCallFailed: 'Kellner-Ruff feelgeschloen',
     finalizationError: 'E Fehler ass beim Ofschloss opgetrueden',
     flow6PayError: 'Bezuelungsfehler',
@@ -210,7 +210,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           returnQuery ? `?${returnQuery}` : ''
         }`;
 
-        // Flows 4, 5, 7 â€” redirect to hub /user page
+        // Flows 4, 5, 7 - redirect to hub /user page
         if (flow === 4 || flow === 5 || flow === 7) {
           const baseUrl = `${hubUrl}/user`;
           const params = new URLSearchParams();
@@ -246,14 +246,14 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           return;
         }
 
-        // Flow 3 â€” guest checkout via API POST
+        // Flow 3 - guest checkout via API POST
         let endpoint = '';
         let body: Record<string, unknown> = {};
 
         if (flow === 3) {
           endpoint = `${hubUrl}/api/checkout/guest`;
           const guestTotal = calculateGuestCheckoutTotal(cartTotal);
-          console.log(`[selectFlow] Guest checkout: ${cartTotal}â‚¬ + 5% fee = ${guestTotal}â‚¬`);
+          console.log(`[selectFlow] Guest checkout: ${cartTotal}€ + 5% fee = ${guestTotal}€`);
           body = {
             amountEuro: guestTotal,
             recipient: hiveAccount,
@@ -336,7 +336,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
     [table, hiveAccount, hubUrl, hasAccount, t],
   );
 
-  // Flow 6 â€” pay directly with existing account (no redirect)
+  // Flow 6 - pay directly with existing account (no redirect)
   const payWithAccount = useCallback(
     async (currentBalance: number) => {
       // Level 2 duplicate check
@@ -364,7 +364,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
         const cooldownUntil = Date.now() + FLOW6_COOLDOWN_MS;
         localStorage.setItem('innopay_balance_trustUntil', cooldownUntil.toString());
         localStorage.setItem('innopay_flow6_cooldown_until', cooldownUntil.toString());
-        console.log('[FLOW 6] Cooldown set for 12s â€” blockchain needs time to finalize');
+        console.log('[FLOW 6] Cooldown set for 12s - blockchain needs time to finalize');
 
         onCartClear();
         onPaymentSuccess?.(newBalance);
@@ -435,36 +435,60 @@ async function executeWaiterCall(
   hasAccount: boolean,
   reason?: string,
 ): Promise<void> {
-  const { encodeComment, distriate } = await import('@/lib/innopay/utils');
+  const { encodeComment, distriate, createEuroTransferOperation } = await import(
+    '@/lib/innopay/utils'
+  );
   const reasonEncoded = reason?.trim() ? ` n:${encodeComment(reason.trim())}` : '';
 
-  if (hasAccount) {
-    const { signAndBroadcastOperation, createEuroTransferOperation } = await import(
-      '@/lib/innopay/utils'
-    );
-    const activeKey = localStorage.getItem('innopay_activePrivate');
-    const accountName = localStorage.getItem('innopay_accountName');
-
-    if (!activeKey || !accountName) {
-      throw new Error('Missing credentials');
-    }
-
-    const suffix = distriate();
-    const operation = createEuroTransferOperation(
-      accountName,
-      hiveAccount,
-      '0.020',
-      `Un serveur est appele${reasonEncoded} TABLE ${table} ${suffix}`,
-    );
-
-    await signAndBroadcastOperation(operation, activeKey);
-  } else {
+  if (!hasAccount) {
     window.location.href = `${hubUrl}/waiter?table=${table}&recipient=${hiveAccount}`;
+    return;
+  }
+
+  const accountName = localStorage.getItem('innopay_accountName');
+  const activeKey = localStorage.getItem('innopay_activePrivate');
+  const masterPassword = localStorage.getItem('innopay_masterPassword');
+
+  if (!accountName || (!activeKey && !masterPassword)) {
+    throw new Error('Missing credentials');
+  }
+
+  const suffix = distriate();
+  const operation = createEuroTransferOperation(
+    accountName,
+    hiveAccount,
+    '0.020',
+    `Un serveur est appele${reasonEncoded} TABLE ${table} ${suffix}`,
+  );
+
+  // Route through the hub's /api/sign-and-broadcast just like Flow 6 Leg 1.
+  // Server-side signing keeps the signing path identical for orders and
+  // waiter calls (same error mode, same observability) and avoids bundling
+  // dhive in the customer browser.
+  const signPayload: Record<string, unknown> = { operation };
+  if (activeKey) {
+    signPayload.activePrivateKey = activeKey;
+  } else {
+    signPayload.masterPassword = masterPassword;
+    signPayload.accountName = accountName;
+  }
+
+  const response = await fetch(`${hubUrl}/api/sign-and-broadcast`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(signPayload),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(
+      errData.message || errData.error || `Hub signing failed: ${response.statusText}`,
+    );
   }
 }
 
 /**
- * Flow 6 â€” two-leg dual-currency payment.
+ * Flow 6 - two-leg dual-currency payment.
  *   Leg 1: Customer â†’ innopay (EURO collateral, signed via hub)
  *   Leg 2: innopay â†’ restaurant (HBD preferred, EURO fallback, debt tracking)
  */
@@ -508,7 +532,7 @@ async function executeFlow6Payment(
 
   if (!signResponse.ok) {
     const errData = await signResponse.json().catch(() => ({}));
-    throw new Error(errData.message || errData.error || 'Ã‰chec de la signature du transfert EURO');
+    throw new Error(errData.message || errData.error || 'Échec de la signature du transfert EURO');
   }
 
   const { txId: customerTxId, usedFallback } = await signResponse.json();
@@ -536,7 +560,7 @@ async function executeFlow6Payment(
     throw new Error(
       errData.message ||
         errData.error ||
-        "Votre paiement a Ã©tÃ© reÃ§u par Innopay mais la commande n'a pas pu Ãªtre transmise au restaurant. Veuillez contacter le personnel.",
+        "Votre paiement a été reçu par Innopay mais la commande n'a pas pu être transmise au restaurant. Veuillez contacter le personnel.",
     );
   }
 
