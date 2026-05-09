@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-05-05
+**Last updated**: 2026-05-09
 
 ---
 
@@ -252,36 +252,65 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 ### Prioritized backlog
 
-1. **Admin opening-hours page / dashboard entry** — implemented 2026-05-07
-   - Dashboard card added for `/admin/opening-hours`.
-   - "Horaires" / "Services" tab controls replaced with conservative native buttons using explicit colors and no Base UI/Tabs styling.
-   - Goal: avoid invisible tab controls on older tablet browsers.
-
-2. **Admin history page** — implemented 2026-05-07
-   - Added `/admin/history` page and `/api/orders/history`.
-   - Added dashboard card and direct access button/link from the CO page.
-   - Uses fulfilled orders, hydrated memos, day grouping, load-more paging, and kitchen-friendly navigation.
-
-3. **Restaurant hours vs kitchen hours model**
-   - Indiesmenu and croque-bedaine hardcode separate `RESTAURANT_HOURS` and `KITCHEN_SCHEDULE` in `kitchen-hours.ts`.
-   - Millewee is DB/config driven (`services`, `standard_week`, `current_schedule`) and can already represent multiple time windows, but it does **not** currently classify whether a service is restaurant-wide, kitchen-only, drinks/bar-only, etc.
-   - Before implementing, decide whether to upgrade the Prisma model with a service scope/type field (for example `scope: "restaurant" | "kitchen" | "bar"`) or introduce a separate restaurant-hours table.
-   - Goal: restaurant open/closed should control general ordering/admin polling; kitchen open/closed should control dish availability and delayed-order slot generation; drinks may remain available during restaurant hours even when kitchen is closed.
-
-4. **Accounting / reporting page**
-   - Lift/adapt `admin/reporting` from indiesmenu; compare croque-bedaine first because it should be close.
-   - Add dashboard card and required API/support code.
-   - Preserve HBD/EUR export behavior (date range, totals, CSV/PDF).
-
-5. **Logo dark-mode compatibility**
+1. **Logo dark-mode compatibility**
    - Create explicit light/dark logo PNG assets (likely via Pillow) instead of relying on `dark:brightness-0 dark:invert`.
    - Swap assets in hero and menu header with `dark:hidden` / `hidden dark:block`.
+
+> Admin/operational backlog (opening-hours model, accounting, etc.) is tracked in the [Admin dashboard](#admin-dashboard) section below.
 
 ### Remaining tests
 
 - [ ] Exercise Flow 4 end-to-end (Stripe topup without order)
 - [ ] Test call-waiter, dedup modal, and per-order mute
 - [ ] Test thermal printer output on the real kitchen printer
+
+---
+
+## Admin dashboard
+
+Cross-cutting admin tooling under `/admin/*`. Reuses Phase 2's auth (`proxy.ts`), `AdminHeader`, and the dashboard card grid. Items below were previously tracked as "Prioritized backlog" inside Phase 4+5 and have been promoted to their own section as the surface grew.
+
+### Completed
+
+- [x] **Opening-hours page + dashboard entry** (2026-05-07)
+  - Dashboard card added for `/admin/opening-hours`.
+  - "Horaires" / "Services" tab controls replaced with conservative native buttons using explicit colors and no Base UI/Tabs styling — avoids invisible tab controls on older tablet browsers.
+  - 3-table data model (`services`, `standard_week`, `current_schedule`) per `~/.claude/plans/synthetic-doodling-star.md` iter 1a.
+
+- [x] **History page** (2026-05-07)
+  - Added `/admin/history` page and `/api/orders/history`.
+  - Added dashboard card and direct access button/link from the CO page.
+  - Uses fulfilled orders, hydrated memos, day grouping, load-more paging, and kitchen-friendly navigation.
+
+- [x] **Restaurant vs kitchen hours model — Phase A: data model + admin UI** (2026-05-09)
+  - Distinction between restaurant-wide hours (drinks, bar) and kitchen-only hours (dishes, delayed slots) modelled via a `scope` column on `services` (`'restaurant' | 'kitchen'`). Plan: `~/.claude/plans/crackling-simmering-saucepan.md` (companion to `synthetic-doodling-star.md`).
+  - **Schema + API**:
+    - Migration `add_service_scope`: `ALTER TABLE services ADD COLUMN scope TEXT NOT NULL DEFAULT 'restaurant'`. Existing rows default to `'restaurant'`.
+    - Zod `servicesSchema` accepts `scope` (defaults to `'restaurant'`).
+    - `/api/admin/services` POST/PATCH validate `scope` (PATCH with explicit allowlist check).
+    - `/api/admin/standard-week` GET surfaces `scope` per row.
+    - `regenerate()` denormalises `scope` into each `current_schedule.resolved` entry, exposed by `/api/current-schedule`.
+  - **Admin UI** (`/admin/opening-hours`):
+    - Scope radio (Restaurant / Cuisine) in the service create/edit dialog.
+    - Colour-coded badge next to each service name in the Services tab list (amber `Restaurant`, green `Cuisine`).
+    - Horaires grid grouped by scope with section headers (Restaurant section / Cuisine section).
+    - Soft warning banner above the grid when a kitchen interval falls outside the union of restaurant intervals on a given day. Non-blocking — save still works.
+  - **Seed**:
+    - `seedOpeningHours()` now creates three services: Ouverture (restaurant, Mon–Sun 10:00–23:59), Déjeuner (kitchen, Mon–Sat 11:45–14:00, Sun closed), Dîner (kitchen, Mon–Sat 18:00–22:00, Sun closed). Destructive — wipes and reseeds, idempotency not needed.
+
+### Remaining
+
+- [ ] **Restaurant vs kitchen hours — Phase B: customer-side gate**
+  - Module-level `current_schedule` cache + React Query loader (`<CurrentScheduleLoader />`) mounted in the customer layout root.
+  - Synchronous helpers in `lib/hooks/useCurrentSchedule.ts`: `isRestaurantOpen`, `isKitchenOpen`, `getKitchenCloseTime`, `getNextOpenDay`, `getValidTimeSlots(requireKitchen)`. Dev bypass on localhost / 192.168.* (mirrors indies/CB pattern).
+  - UX wiring: closed banner on the menu when restaurant closed; dish "Indisponible" disabled state when kitchen closed but restaurant open; cart submission blocked when restaurant closed; drinks-only carts still allowed when kitchen closed but restaurant open.
+  - Verification matrix in `crackling-simmering-saucepan.md` (kitchen-closed banner, Sunday closed, dev bypass, cache refresh).
+  - Once Phase B is proven in millewee, retrofit indiesmenu (iter 1b) and croque-bedaine (iter 1c) per `synthetic-doodling-star.md`.
+
+- [ ] **Accounting / reporting page**
+  - Lift/adapt `admin/reporting` from indiesmenu; compare croque-bedaine first because it should be close.
+  - Add dashboard card and required API/support code.
+  - Preserve HBD/EUR export behavior (date range, totals, CSV/PDF).
 
 ---
 
