@@ -6,6 +6,7 @@ export interface Service {
   name_fr: string;
   name_en: string;
   name_lb: string;
+  scope: 'restaurant' | 'kitchen';
   sort_order: number;
   is_active: boolean;
   created_at: string;

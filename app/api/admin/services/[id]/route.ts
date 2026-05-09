@@ -13,6 +13,12 @@ export async function PATCH(
     if (body.name_fr !== undefined) data.name_fr = body.name_fr;
     if (body.name_en !== undefined) data.name_en = body.name_en;
     if (body.name_lb !== undefined) data.name_lb = body.name_lb;
+    if (body.scope !== undefined) {
+      if (body.scope !== 'restaurant' && body.scope !== 'kitchen') {
+        return NextResponse.json({ error: 'Invalid scope' }, { status: 400 });
+      }
+      data.scope = body.scope;
+    }
     if (body.sort_order !== undefined) data.sort_order = body.sort_order;
     if (body.is_active !== undefined) data.is_active = body.is_active;
 

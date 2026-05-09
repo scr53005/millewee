@@ -4,8 +4,11 @@ type PrismaTx = Pick<PrismaClient, 'services' | 'standard_week' | 'current_sched
 
 const DAY_COLUMNS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 
+export type ServiceScope = 'restaurant' | 'kitchen';
+
 export interface ResolvedService {
   service_id: number;
+  scope: ServiceScope;
   name_fr: string;
   name_en: string;
   name_lb: string;
@@ -65,6 +68,7 @@ export async function regenerate(prisma: PrismaTx, weeks = 4): Promise<number> {
         const [open, close] = cell.split('-');
         resolved.push({
           service_id: service.id,
+          scope: service.scope as ServiceScope,
           name_fr: service.name_fr,
           name_en: service.name_en,
           name_lb: service.name_lb,

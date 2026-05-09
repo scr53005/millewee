@@ -404,11 +404,13 @@ async function seedTables() {
 // ─── Seed Opening Hours ───
 
 async function seedOpeningHours() {
-  const service = await prisma.services.create({
+  // Restaurant service (broad bar/service window).
+  const ouverture = await prisma.services.create({
     data: {
       name_fr: "Ouverture",
       name_en: "Open",
       name_lb: "Op",
+      scope: "restaurant",
       sort_order: 0,
       is_active: true,
     },
@@ -416,7 +418,7 @@ async function seedOpeningHours() {
 
   await prisma.standard_week.create({
     data: {
-      service_id: service.id,
+      service_id: ouverture.id,
       mon: "10:00-23:59",
       tue: "10:00-23:59",
       wed: "10:00-23:59",
@@ -427,8 +429,58 @@ async function seedOpeningHours() {
     },
   });
 
+  // Kitchen services: lunch (Mon–Sat 11:45–14:00) and dinner (Mon–Sat 18:00–22:00).
+  // Closed Sunday.
+  const dejeuner = await prisma.services.create({
+    data: {
+      name_fr: "Déjeuner",
+      name_en: "Lunch",
+      name_lb: "Mëttegiessen",
+      scope: "kitchen",
+      sort_order: 1,
+      is_active: true,
+    },
+  });
+
+  await prisma.standard_week.create({
+    data: {
+      service_id: dejeuner.id,
+      mon: "11:45-14:00",
+      tue: "11:45-14:00",
+      wed: "11:45-14:00",
+      thu: "11:45-14:00",
+      fri: "11:45-14:00",
+      sat: "11:45-14:00",
+      sun: null,
+    },
+  });
+
+  const diner = await prisma.services.create({
+    data: {
+      name_fr: "Dîner",
+      name_en: "Dinner",
+      name_lb: "Owesiessen",
+      scope: "kitchen",
+      sort_order: 2,
+      is_active: true,
+    },
+  });
+
+  await prisma.standard_week.create({
+    data: {
+      service_id: diner.id,
+      mon: "18:00-22:00",
+      tue: "18:00-22:00",
+      wed: "18:00-22:00",
+      thu: "18:00-22:00",
+      fri: "18:00-22:00",
+      sat: "18:00-22:00",
+      sun: null,
+    },
+  });
+
   const generated = await regenerate(prisma, 4);
-  console.log(`  ✓ 1 service + standard week seeded, current_schedule regenerated (${generated} days)`);
+  console.log(`  ✓ 3 services (Ouverture + Déjeuner + Dîner) seeded, current_schedule regenerated (${generated} days)`);
 }
 
 // ─── Main ───

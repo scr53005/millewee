@@ -29,8 +29,8 @@ const DAY_LABELS: Record<DayKey, string> = {
   mon: 'Lun', tue: 'Mar', wed: 'Mer', thu: 'Jeu', fri: 'Ven', sat: 'Sam', sun: 'Dim',
 };
 
-type ServiceForm = { name_fr: string; name_en: string; name_lb: string };
-const emptyServiceForm: ServiceForm = { name_fr: '', name_en: '', name_lb: '' };
+type ServiceForm = { name_fr: string; name_en: string; name_lb: string; scope: 'restaurant' | 'kitchen' };
+const emptyServiceForm: ServiceForm = { name_fr: '', name_en: '', name_lb: '', scope: 'restaurant' };
 
 interface DayCell {
   open: string;
@@ -72,7 +72,7 @@ function ServicesTab() {
 
   const openEdit = (s: Service) => {
     setEditingId(s.id);
-    setForm({ name_fr: s.name_fr, name_en: s.name_en, name_lb: s.name_lb });
+    setForm({ name_fr: s.name_fr, name_en: s.name_en, name_lb: s.name_lb, scope: s.scope });
     setDialogOpen(true);
   };
 
@@ -159,7 +159,18 @@ function ServicesTab() {
                 </button>
               </div>
               <div className="flex-1">
-                <div className="font-medium text-gray-900">{s.name_fr}</div>
+                <div className="font-medium text-gray-900 flex items-center gap-2">
+                  <span>{s.name_fr}</span>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded font-medium border ${
+                      s.scope === 'restaurant'
+                        ? 'bg-[#fdf6e9] text-[#8a6420] border-[#d4a24e]'
+                        : 'bg-[#e8f0e4] text-[#2c4f25] border-[#3d6b35]'
+                    }`}
+                  >
+                    {s.scope === 'restaurant' ? 'Restaurant' : 'Cuisine'}
+                  </span>
+                </div>
                 <div className="text-xs text-gray-500">
                   EN: {s.name_en} · LB: {s.name_lb}
                 </div>
@@ -215,6 +226,31 @@ function ServicesTab() {
                 required
                 className="bg-white text-gray-900"
               />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-gray-700">Type</Label>
+              <div className="flex gap-4 pt-1">
+                <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="service-scope"
+                    value="restaurant"
+                    checked={form.scope === 'restaurant'}
+                    onChange={() => setForm((f) => ({ ...f, scope: 'restaurant' }))}
+                  />
+                  Restaurant
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-900 cursor-pointer">
+                  <input
+                    type="radio"
+                    name="service-scope"
+                    value="kitchen"
+                    checked={form.scope === 'kitchen'}
+                    onChange={() => setForm((f) => ({ ...f, scope: 'kitchen' }))}
+                  />
+                  Cuisine
+                </label>
+              </div>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
@@ -366,6 +402,53 @@ function HorairesTab() {
     }
   };
 
+  const restaurantRows = useMemo(() => rows.filter((r) => r.scope === 'restaurant'), [rows]);
+  const kitchenRows = useMemo(() => rows.filter((r) => r.scope === 'kitchen'), [rows]);
+
+  const warnings = useMemo(() => {
+    const restIds = restaurantRows.map((r) => r.service_id);
+    const kitIds = kitchenRows.map((r) => r.service_id);
+    const result: Array<{ dayKey: DayKey; dayLabel: string }> = [];
+
+    for (const day of DAY_KEYS) {
+      const restIntervals: Array<[string, string]> = [];
+      for (const id of restIds) {
+        const cell = drafts[id]?.[day];
+        if (cell?.enabled && cell.open && cell.close && cell.open < cell.close) {
+          restIntervals.push([cell.open, cell.close]);
+        }
+      }
+      const kitIntervals: Array<[string, string]> = [];
+      for (const id of kitIds) {
+        const cell = drafts[id]?.[day];
+        if (cell?.enabled && cell.open && cell.close && cell.open < cell.close) {
+          kitIntervals.push([cell.open, cell.close]);
+        }
+      }
+      if (kitIntervals.length === 0) continue;
+
+      // Merge restaurant intervals into a union of non-overlapping spans.
+      const sorted: Array<[string, string]> = [...restIntervals].sort(([a], [b]) => a.localeCompare(b));
+      const merged: Array<[string, string]> = [];
+      for (const [o, c] of sorted) {
+        const last = merged[merged.length - 1];
+        if (last && last[1] >= o) {
+          if (c > last[1]) last[1] = c;
+        } else {
+          merged.push([o, c]);
+        }
+      }
+
+      const allCovered = kitIntervals.every(([ko, kc]) =>
+        merged.some(([ro, rc]) => ro <= ko && rc >= kc),
+      );
+
+      if (!allCovered) result.push({ dayKey: day, dayLabel: DAY_LABELS[day] });
+    }
+
+    return result;
+  }, [drafts, restaurantRows, kitchenRows]);
+
   const hasDirty = dirty.size > 0;
 
   if (isLoading) return <p className="text-gray-500 text-center py-8">Chargement...</p>;
@@ -380,6 +463,14 @@ function HorairesTab() {
 
   return (
     <div>
+      {warnings.length > 0 && (
+        <div className="mb-3 px-3 py-2 bg-yellow-50 border border-yellow-300 rounded text-sm">
+          <div className="font-medium text-yellow-900 mb-0.5">⚠ Avertissement</div>
+          <div className="text-xs text-yellow-800">
+            {warnings.map((w) => w.dayLabel).join(', ')}: la cuisine est ouverte hors des heures du restaurant.
+          </div>
+        </div>
+      )}
       <div className="overflow-x-auto border rounded-md bg-white">
         <table className="w-full text-sm">
           <thead className="bg-gray-50">
@@ -394,7 +485,22 @@ function HorairesTab() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {rows.map((r) => {
+            {[
+              ...(restaurantRows.length > 0 ? [{ kind: 'header' as const, key: 'hdr-r', label: 'Restaurant' }] : []),
+              ...restaurantRows.map((r) => ({ kind: 'row' as const, row: r })),
+              ...(kitchenRows.length > 0 ? [{ kind: 'header' as const, key: 'hdr-k', label: 'Cuisine' }] : []),
+              ...kitchenRows.map((r) => ({ kind: 'row' as const, row: r })),
+            ].map((item) => {
+              if (item.kind === 'header') {
+                return (
+                  <tr key={item.key}>
+                    <td colSpan={9} className="bg-gray-100 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-700">
+                      {item.label}
+                    </td>
+                  </tr>
+                );
+              }
+              const r = item.row;
               const draft = drafts[r.service_id];
               if (!draft) return null;
               const isCollapsed = collapsed.has(r.service_id);

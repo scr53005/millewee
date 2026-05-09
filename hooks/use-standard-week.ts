@@ -6,6 +6,7 @@ export interface StandardWeekRow {
   service_name_fr: string;
   service_name_en: string;
   service_name_lb: string;
+  scope: 'restaurant' | 'kitchen';
   sort_order: number;
   mon: string | null;
   tue: string | null;

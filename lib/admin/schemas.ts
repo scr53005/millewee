@@ -104,6 +104,7 @@ export const servicesSchema = z.object({
   name_fr: z.string().min(1, 'Nom français requis'),
   name_en: z.string().min(1, 'Nom anglais requis'),
   name_lb: z.string().min(1, 'Nom luxembourgeois requis'),
+  scope: z.enum(['restaurant', 'kitchen']).default('restaurant'),
   sort_order: z.coerce.number().int().nonnegative().default(0),
   is_active: z.boolean().default(true),
 });

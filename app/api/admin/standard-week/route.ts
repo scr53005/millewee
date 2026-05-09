@@ -21,6 +21,7 @@ export async function GET() {
         service_name_fr: s.name_fr,
         service_name_en: s.name_en,
         service_name_lb: s.name_lb,
+        scope: s.scope as 'restaurant' | 'kitchen',
         sort_order: s.sort_order,
         mon: active?.mon ?? null,
         tue: active?.tue ?? null,
