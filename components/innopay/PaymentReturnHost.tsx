@@ -81,6 +81,7 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
     const sessionId = searchParams.get('session_id');
     const credentialToken = searchParams.get('credential_token');
     const flowParam = searchParams.get('flow');
+    const optimisticBalanceParam = searchParams.get('optimistic_balance');
     const error = searchParams.get('error');
 
     const isReturn =
@@ -126,6 +127,16 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
             body: JSON.stringify(credentialToken ? { credentialToken } : { sessionId }),
           });
 
+          // For Flow 7 the credential session's euroBalance is stale (captured
+          // at session creation, before the topup landed). We prefer the
+          // optimistic_balance URL param computed by flow7-return from Stripe
+          // metadata (pre-topup balance + topup - order). For other flows the
+          // credential value is accurate, so we keep using it.
+          const optimisticBalance =
+            optimisticBalanceParam !== null && !isNaN(parseFloat(optimisticBalanceParam))
+              ? parseFloat(optimisticBalanceParam)
+              : null;
+
           if (response.ok) {
             const data = await response.json();
             localStorage.setItem('innopay_accountName', data.accountName);
@@ -137,8 +148,13 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
             if (postingKey) localStorage.setItem('innopay_postingPrivate', postingKey);
             if (memoKey) localStorage.setItem('innopay_memoPrivate', memoKey);
 
-            if (data.euroBalance !== undefined) {
-              localStorage.setItem('innopay_lastBalance', data.euroBalance.toFixed(2));
+            const balanceToTrust =
+              flowParam === '7' && optimisticBalance !== null
+                ? optimisticBalance
+                : data.euroBalance;
+
+            if (balanceToTrust !== undefined) {
+              localStorage.setItem('innopay_lastBalance', balanceToTrust.toFixed(2));
               localStorage.setItem('innopay_lastBalance_timestamp', Date.now().toString());
 
               const currentFlow = localStorage.getItem('innopay_flow_pending');
@@ -165,6 +181,19 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
           } else {
             const errorData = await response.json().catch(() => ({}));
             console.warn('[PaymentReturnHost] Failed to fetch credentials:', response.status, errorData);
+
+            // Pure Flow 7 (existing-account topup): no credential session row
+            // exists, so the credential fetch 404s and falls into this branch.
+            // We still need to record the optimistic balance from the URL so
+            // the spoke's MiniWallet shows the right number immediately.
+            if (flowParam === '7' && optimisticBalance !== null) {
+              localStorage.setItem('innopay_lastBalance', optimisticBalance.toFixed(2));
+              localStorage.setItem('innopay_lastBalance_timestamp', Date.now().toString());
+              localStorage.setItem(
+                'innopay_balance_trustUntil',
+                (Date.now() + 60 * 1000).toString(),
+              );
+            }
           }
         }
 
