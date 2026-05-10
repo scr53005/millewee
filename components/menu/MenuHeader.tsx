@@ -30,12 +30,21 @@ export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
     <>
       <div className="relative w-10 h-10 shrink-0">
         <Image
-          src="/images/logo_millewee_transp.png"
+          src="/images/logo_millewee_transp_light.png"
           alt="Millewee"
           fill
           sizes="40px"
-          className="object-contain dark:brightness-0 dark:invert"
+          className="object-contain dark:hidden"
           priority
+        />
+        <Image
+          src="/images/logo_millewee_transp_dark.png"
+          alt=""
+          fill
+          sizes="40px"
+          className="object-contain hidden dark:block"
+          priority
+          aria-hidden="true"
         />
       </div>
       <span className="font-display text-2xl font-bold text-foreground">Millewee</span>

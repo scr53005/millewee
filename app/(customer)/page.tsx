@@ -39,12 +39,21 @@ function HomeInner() {
       <div className="flex flex-col items-center mt-6">
         <div className="relative w-48 h-48">
           <Image
-            src="/images/logo_millewee_transp.png"
+            src="/images/logo_millewee_transp_light.png"
             alt="Caf\u00e9-Brasserie Millewee"
             fill
             sizes="192px"
-            className="object-contain dark:brightness-0 dark:invert"
+            className="object-contain dark:hidden"
             priority
+          />
+          <Image
+            src="/images/logo_millewee_transp_dark.png"
+            alt=""
+            fill
+            sizes="192px"
+            className="object-contain hidden dark:block"
+            priority
+            aria-hidden="true"
           />
         </div>
         <div className="w-full max-w-md h-8 -mt-2 rounded-lg overflow-hidden opacity-85">

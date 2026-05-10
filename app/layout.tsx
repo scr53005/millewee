@@ -22,7 +22,7 @@ export const metadata: Metadata = {
   description: "Brasserie Millewee - Burgers, plats du jour et plus a Luxembourg Gasperich",
   icons: {
     icon: "/images/favicon-48x48.png",
-    apple: "/logo2-512x512.PNG",
+    apple: "/logo2-512x512.png",
   },
   manifest: "/manifest.json",
   appleWebApp: {
@@ -33,6 +33,11 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
+  // Tell Chrome / Samsung Internet that we natively support both schemes.
+  // Without this, mobile browsers may force-darken the page when the OS is in
+  // dark mode but the user has flipped our in-app toggle to light — which made
+  // the dark-walnut logo sit on a browser-darkened background (poor contrast).
+  colorScheme: "light dark",
   themeColor: "#111827",
 };
 

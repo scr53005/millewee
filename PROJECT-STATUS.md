@@ -1,6 +1,6 @@
 # Millewee — Project Status
 
-**Last updated**: 2026-05-09
+**Last updated**: 2026-05-10
 
 ---
 
@@ -143,6 +143,10 @@ Customer-facing menu browsing and cart functionality. This is what restaurant gu
 - [x] **Dev-only localStorage reset** — `DevClearStorageButton` added for private/dev hosts; clears Innopay/cart/flow test state while preserving table, menu, and language
 - [x] **Floating cart placement** — cart button no longer occupies the MiniWallet corner; it anchors near the categories area and composes with `Draggable`, with persisted position
 - [x] **PWA shell** — manifest, service worker, offline page, install icons, service-worker headers, and registration component added; production build verified
+- [x] **PWA `color-scheme` declaration** (2026-05-10) — `app/layout.tsx` viewport now exports `colorScheme: "light dark"`, opting out of Chrome / Samsung Internet auto-dark force-darken when the customer flips the in-app toggle to light while the OS is in dark mode. Also fixed the apple-touch-icon casing (`logo2-512x512.PNG` → `.png`) after the `public/` rename.
+- [x] **Logo dark-mode compatibility** (2026-05-10) — replaced the runtime `dark:brightness-0 dark:invert` CSS hack with two pre-baked PNG variants. `scripts/generate-logo-variants.py` (Pillow) reads `logo_millewee_transp.png` and emits `_light.png` (walnut `#1a1310` for light bg) and `_dark.png` (cream `#f5f0e8` for dark bg). MenuHeader and the hero render both `<Image>`s with `dark:hidden` / `hidden dark:block` — exactly one shows at a time, no filter passes. Future polychrome variants drop in without code change.
+- [x] **DishCard expanded view reflow** (2026-05-10) — when expanded, the header collapses to one row (name + badges + price right-aligned via `ml-auto`), bottom padding tightens (`pb-3` → `pb-1.5`), allergens (inline mode) move into the expanded body. Image/video container switches from a fixed `h-32` to `aspect-[4/3]`, matching the optimizer's 800x600 max output and roughly doubling the image area on a phone.
+- [x] **Pilot dish video** (2026-05-10, dish #33 cheeseburger) — Vercel Blob (`millewee-media`) hosts the MP4, `lib/dish-videos.ts` carries a hand-curated `dish_id → blob URL` map (DB column to follow once the pilot validates). Rendered in the expanded DishCard via `<video autoplay muted loop playsInline>` with the still image as `poster`. Tap-to-unmute speaker overlay (Lucide `Volume2` / `VolumeX`) — required because mobile browsers block autoplay-with-sound.
 
 ### Known issues / TODO
 
@@ -253,9 +257,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 ### Prioritized backlog
 
-1. **Logo dark-mode compatibility**
-   - Create explicit light/dark logo PNG assets (likely via Pillow) instead of relying on `dark:brightness-0 dark:invert`.
-   - Swap assets in hero and menu header with `dark:hidden` / `hidden dark:block`.
+_(Empty — all prior items completed; new ones land here as they're identified.)_
 
 > Admin/operational backlog (opening-hours model, accounting, etc.) is tracked in the [Admin dashboard](#admin-dashboard) section below.
 
@@ -309,16 +311,21 @@ Cross-cutting admin tooling under `/admin/*`. Reuses Phase 2's auth (`proxy.ts`)
     - CartSheet `handleOrder` gated: blocks submission with toast when restaurant closed, refuses dish-containing carts with toast when kitchen closed (drinks-only carts still allowed). Order button disabled accordingly.
   - Trilingual i18n keys added: `schedule.restaurantClosed`, `schedule.kitchenClosed`, `schedule.reopensAt`, `schedule.reopensOn`.
 
+- [x] **Tips for waiters — Step 1: front-end** (2026-05-10)
+  - **CartSheet tip panel** — toggle button between "Total" and "Commandez!" + bell line. Expanded panel shows three preset percentage buttons (10% / 15% / 20%), a "Choisissez un montant" custom input (Decimal 10,2), and an "Ajouter le pourboire" submit. Hybrid behaviour: presets apply immediately, custom input requires submit.
+  - **Cart state** — `lib/cart/types.ts` `CartState` extended with `tip: number`; reducer extended with `SET_TIP`; auto-clamps `tip` to ≤ subtotal × 0.5 on every items-changing action so a later subtotal drop doesn't leave a runaway tip. localStorage version bumped (v1 → v2). `totalPrice` is now `subtotal + tip`; `subtotal` exposed separately for breakdown display.
+  - **UX guardrails** — soft warning above 30% of subtotal, hard cap at 50% (anti-laundering). Once a tip is applied the panel collapses; toggle label becomes "Pourboire 2.50 € (modifier)" and reopens the panel for editing. Breakdown lines (Sous-total / Pourboire / Total) only render when `tip > 0`.
+  - **Memo** — `T:X.XX` segment added to the codified memo via `useInnopayCart.getMemo()` when `tip > 0`. Position adjacent to the items section, before ` TABLE N`. Backwards-compatible: older non-tipped orders just don't carry the segment.
+  - **"Vider le panier"** commented out (not deleted) to save vertical line; per-item trash buttons cover the case.
+  - **Trilingual i18n keys** added: `tip.button`, `tip.modifyButton` (with `{amount}` placeholder), `tip.subtotal`, `tip.label`, `tip.pickAmount`, `tip.add`, `tip.percent` (with `{n}` placeholder), `tip.softWarning`, `tip.hardCapNote`.
+  - **Verified end-to-end** — tips render on CO page order cards (small "+ pourboire X.XX €" chip) and on the thermal printer ticket. The printer rendering is currently more than the minimum required ("a bit much") — to be tightened during step-2 back-end work.
+
 ### Remaining
 
-- [ ] **Tips for waiters** *(top priority — frontend first, back-end routing to follow)*
-  - **Frontend (CartSheet)**: between "Total" and the "Commandez!" + bell line, add a "Laisser un pourboire / Leave a tip / E Pourboire ginn" toggle button. When expanded, the cart-sheet shows three preset percentage buttons (10% / 15% / 20%), a "Choisissez un montant" custom input (Decimal 10,2), and an "Ajouter le pourboire" submit. Hybrid behaviour: presets apply immediately, the custom input requires submit.
-  - **Cart state**: extend `lib/cart/types.ts` `CartState` with `tip: number`; extend reducer with `SET_TIP`; auto-clamp `tip` to ≤ subtotal × 0.5 on every items-changing action so a later subtotal drop doesn't leave a runaway tip. Bump localStorage version (v1 → v2). `totalPrice` (already used by every payment flow) becomes `subtotal + tip`; expose `subtotal` separately for breakdown display.
-  - **UX rules**: soft warning above 30% of subtotal, hard cap at 50% of subtotal (anti-laundering). Once a tip is applied the panel collapses; the toggle label becomes "Pourboire 2.50 € (modifier)" and reopens the panel for editing. Breakdown lines (Sous-total / Pourboire / Total) only render when `tip > 0`.
-  - **Memo**: add `T:X.XX` segment to the codified memo (in `useInnopayCart.getMemo()`) when `tip > 0`. Position adjacent to the items section, before ` TABLE N`. Backwards-compatible — older non-tipped orders just don't carry the segment. The CO page is unaffected for fulfilment but should display a `+ pourboire X.XX €` chip on the order card (small follow-up).
-  - **Comment out "Vider le panier"** to save the vertical line; per-item trash buttons cover the use case. Leave the code commented (not deleted) so it can be revived if customers complain.
-  - **i18n keys** (FR / EN / LB): `tip.button`, `tip.modifyButton` (with `{amount}` placeholder), `tip.subtotal`, `tip.label`, `tip.pickAmount`, `tip.add`, `tip.percent` (with `{n}` placeholder), `tip.softWarning` (above 30%), `tip.hardCapNote` (50% max).
-  - **Back-end / admin (step 2 — discussion logged 2026-05-09, decisions pending)**: distribution to a shared waiter+kitchen "tirelire" account. Add a `tip_eur` column to the `transfers` table (parsed from memo at hydration) so the future accounting page can sum tips separately.
+- [ ] **Tips for waiters — Step 2: back-end / admin** *(top priority; step 1 front-end completed 2026-05-10, see Admin dashboard > Completed)*
+  - Distribution to a shared waiter+kitchen "tirelire" account. Add a `tip_eur` column to the `transfers` table (parsed from memo at hydration) so the future accounting page can sum tips separately.
+  - **Printer rendering tightening** — the front-end pass left tips visible on the thermal printer ticket; that's "a bit much" and should be tightened during this back-end pass (e.g., footer-only line, or hide on the kitchen ticket and keep on the bar/receipt ticket).
+  - Discussion logged 2026-05-09, decisions pending — see below.
 
     **Architecture decision: split at innopay (recommended) vs split at restaurant.**
     - *A. Split at innopay* — innopay receives one transfer of the grand total (e.g., 14.00€) from the customer, then issues two outgoing transfers: order leg → `millewee` (12.50€), tip leg → `millewee-tips` (1.50€). Cleanest separation of funds; tip never sits in the restaurant operator's account; on-chain audit trail via `millewee-tips` history.

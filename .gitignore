@@ -40,9 +40,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# movies (served from blob storage, not for production))
+*.mp4
+
 # raw data files (not for production)
 /public/images-raw/
 /public/dishes-raw/
+/public/images-backup/
 
 # qr code images (not for production)
 /scripts/qrcodes/output_qrs/

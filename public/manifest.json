@@ -23,13 +23,13 @@
       "purpose": "any"
     },
     {
-      "src": "/logo2-512x512.PNG",
+      "src": "/logo2-512x512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/logo2-768x768.PNG",
+      "src": "/logo2-768x768.png",
       "sizes": "768x768",
       "type": "image/png",
       "purpose": "any"
