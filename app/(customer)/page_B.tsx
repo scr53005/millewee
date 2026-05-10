@@ -25,7 +25,7 @@ export function MenuPageB({ onToggleVariant }: MenuPageBProps = {}) {
   return (
     <div className="min-h-screen bg-background">
       <MenuHeader onCartOpen={() => setCartOpen(true)} onLogoClick={onToggleVariant} />
-      <ScheduleClosedBanner />
+      <ScheduleClosedBanner hideKitchenWarning={activeTab !== 'dishes'} />
 
       {/* Dishes / Drinks toggle */}
       <div className="sticky top-[57px] z-25 bg-background/95 backdrop-blur-sm border-b border-border">

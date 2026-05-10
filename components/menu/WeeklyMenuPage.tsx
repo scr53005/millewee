@@ -49,7 +49,7 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
   return (
     <div className="min-h-screen bg-background">
       <MenuHeader onCartOpen={() => setCartOpen(true)} onLogoClick={onBackToHero} />
-      <ScheduleClosedBanner />
+      <ScheduleClosedBanner hideKitchenWarning={activeTab !== 'specials'} />
 
       <div className="sticky top-[57px] z-25 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex max-w-4xl mx-auto">

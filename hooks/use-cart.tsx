@@ -2,7 +2,14 @@
 
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { cartReducer, type CartAction } from '@/lib/cart/reducer';
-import { type CartState, type CartItemData, type CartItem, effectivePrice, EMPTY_CART } from '@/lib/cart/types';
+import {
+  type CartState,
+  type CartItemData,
+  type CartItem,
+  EMPTY_CART,
+  CART_VERSION,
+  computeSubtotal,
+} from '@/lib/cart/types';
 
 const STORAGE_KEY = 'millewee_cart';
 const EXPIRY_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -22,7 +29,12 @@ function loadCart(): CartState {
       localStorage.removeItem(STORAGE_KEY);
       return EMPTY_CART;
     }
-    if (stored.state.version !== 1) return EMPTY_CART;
+    // Migrate v1 → v2: add tip:0 to legacy carts so the items survive the
+    // version bump introduced for the tip feature.
+    if (stored.state.version === 1) {
+      return { ...stored.state, tip: 0, version: CART_VERSION };
+    }
+    if (stored.state.version !== CART_VERSION) return EMPTY_CART;
     return stored.state;
   } catch {
     return EMPTY_CART;
@@ -47,7 +59,13 @@ interface CartContextType {
   updateQuantity: (key: string, quantity: number) => void;
   updateComment: (key: string, comment: string) => void;
   clearCart: () => void;
+  setTip: (tip: number) => void;
   totalItems: number;
+  /** Items only — used for breakdown display + tip percentage base. */
+  subtotal: number;
+  /** Current tip in EUR (already auto-clamped by the reducer). */
+  tip: number;
+  /** subtotal + tip — what every payment flow charges. */
   totalPrice: number;
 }
 
@@ -75,7 +93,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (e.key !== STORAGE_KEY || !e.newValue) return;
       try {
         const stored: StoredCart = JSON.parse(e.newValue);
-        if (stored.state.version === 1) {
+        if (stored.state.version === CART_VERSION) {
           dispatch({ type: 'HYDRATE', state: stored.state });
         }
       } catch {
@@ -106,15 +124,18 @@ export function CartProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR' });
   }, []);
 
+  const setTip = useCallback((tip: number) => {
+    dispatch({ type: 'SET_TIP', tip });
+  }, []);
+
   const totalItems = useMemo(
     () => state.items.reduce((sum, i) => sum + i.quantity, 0),
     [state.items],
   );
 
-  const totalPrice = useMemo(
-    () => state.items.reduce((sum, i) => sum + effectivePrice(i.item) * i.quantity, 0),
-    [state.items],
-  );
+  const subtotal = useMemo(() => computeSubtotal(state.items), [state.items]);
+  const tip = state.tip;
+  const totalPrice = subtotal + tip;
 
   const value = useMemo<CartContextType>(
     () => ({
@@ -124,10 +145,25 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQuantity,
       updateComment,
       clearCart,
+      setTip,
       totalItems,
+      subtotal,
+      tip,
       totalPrice,
     }),
-    [state.items, addItem, removeItem, updateQuantity, updateComment, clearCart, totalItems, totalPrice],
+    [
+      state.items,
+      addItem,
+      removeItem,
+      updateQuantity,
+      updateComment,
+      clearCart,
+      setTip,
+      totalItems,
+      subtotal,
+      tip,
+      totalPrice,
+    ],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

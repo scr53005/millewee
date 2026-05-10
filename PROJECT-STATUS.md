@@ -243,10 +243,7 @@ Phases 4 and 5 merged — payment and CO page share the `transfers` table and me
 
 ### Remaining
 
-- [ ] **BUG: Call-waiter fails on the Flow-6-like path** (reported 2026-05-09)
-  - Symptom: with a local wallet imported and balance ≥ 0, clicking the bell button shows the yellow "Paiement en cours" banner briefly, then a grey "Erreur technique" banner. The waiter call never reaches the CO page.
-  - Suspected area: `actions.callWaiter()` in `usePaymentFlow` takes the same code path as Flow 6 (local-signed transfer), and likely fails the same way Flow 6 used to before the cooldown / fresh-balance work — but tailored differently because there is no cart memo. Worth checking the memo construction in `useInnopayCart.getMemo()` for the call-waiter case + the `payWithAccount` vs `callWaiter` divergence.
-  - Reproducer: indies-style local wallet (any account with HBD ≥ ~0), open menu, no cart items, click bell, enter reason, send. Banner cycle observed in PROD.
+- [x] ~~**BUG: Call-waiter fails on the Flow-6-like path**~~ — resolved 2026-05-09. Root cause: client-side `dhive` was failing in mobile browsers. Fix: route the call-waiter `custom_json` operation through the hub's `/api/sign-and-broadcast` endpoint, the same path Flow 6 Leg 1 already uses. `executeWaiterCall` no longer imports `dhive`, no longer reads the active key from localStorage for client-side signing. Verified end-to-end in dev with the local wallet path. SPOKE-DOCUMENTATION.md updated with the canonical pattern; indies and croque-bedaine flagged for future retrofit. `signAndBroadcastOperation` left as a documented unused fallback in `lib/innopay/utils.ts`.
 - [x] ~~**BUG: Flow 3 success banner does not appear on return** from Stripe checkout~~ — resolved
 - [x] ~~Exercise Flows 5 and 7 end-to-end~~ — tested successfully
 - [x] ~~Implement automatic thermal printer output on CO page~~ — implemented via indiesmenu lift-and-shift/adaptation
@@ -313,6 +310,52 @@ Cross-cutting admin tooling under `/admin/*`. Reuses Phase 2's auth (`proxy.ts`)
   - Trilingual i18n keys added: `schedule.restaurantClosed`, `schedule.kitchenClosed`, `schedule.reopensAt`, `schedule.reopensOn`.
 
 ### Remaining
+
+- [ ] **Tips for waiters** *(top priority — frontend first, back-end routing to follow)*
+  - **Frontend (CartSheet)**: between "Total" and the "Commandez!" + bell line, add a "Laisser un pourboire / Leave a tip / E Pourboire ginn" toggle button. When expanded, the cart-sheet shows three preset percentage buttons (10% / 15% / 20%), a "Choisissez un montant" custom input (Decimal 10,2), and an "Ajouter le pourboire" submit. Hybrid behaviour: presets apply immediately, the custom input requires submit.
+  - **Cart state**: extend `lib/cart/types.ts` `CartState` with `tip: number`; extend reducer with `SET_TIP`; auto-clamp `tip` to ≤ subtotal × 0.5 on every items-changing action so a later subtotal drop doesn't leave a runaway tip. Bump localStorage version (v1 → v2). `totalPrice` (already used by every payment flow) becomes `subtotal + tip`; expose `subtotal` separately for breakdown display.
+  - **UX rules**: soft warning above 30% of subtotal, hard cap at 50% of subtotal (anti-laundering). Once a tip is applied the panel collapses; the toggle label becomes "Pourboire 2.50 € (modifier)" and reopens the panel for editing. Breakdown lines (Sous-total / Pourboire / Total) only render when `tip > 0`.
+  - **Memo**: add `T:X.XX` segment to the codified memo (in `useInnopayCart.getMemo()`) when `tip > 0`. Position adjacent to the items section, before ` TABLE N`. Backwards-compatible — older non-tipped orders just don't carry the segment. The CO page is unaffected for fulfilment but should display a `+ pourboire X.XX €` chip on the order card (small follow-up).
+  - **Comment out "Vider le panier"** to save the vertical line; per-item trash buttons cover the use case. Leave the code commented (not deleted) so it can be revived if customers complain.
+  - **i18n keys** (FR / EN / LB): `tip.button`, `tip.modifyButton` (with `{amount}` placeholder), `tip.subtotal`, `tip.label`, `tip.pickAmount`, `tip.add`, `tip.percent` (with `{n}` placeholder), `tip.softWarning` (above 30%), `tip.hardCapNote` (50% max).
+  - **Back-end / admin (step 2 — discussion logged 2026-05-09, decisions pending)**: distribution to a shared waiter+kitchen "tirelire" account. Add a `tip_eur` column to the `transfers` table (parsed from memo at hydration) so the future accounting page can sum tips separately.
+
+    **Architecture decision: split at innopay (recommended) vs split at restaurant.**
+    - *A. Split at innopay* — innopay receives one transfer of the grand total (e.g., 14.00€) from the customer, then issues two outgoing transfers: order leg → `millewee` (12.50€), tip leg → `millewee-tips` (1.50€). Cleanest separation of funds; tip never sits in the restaurant operator's account; on-chain audit trail via `millewee-tips` history.
+    - *B. Split at restaurant* — innopay sends the full 14.00€ to `millewee`; a subsequent op moves 1.50€ from `millewee` to `millewee-tips`. Requires `innopay` to hold active-key authority on `millewee` (heavy ceremony, real trust surface). **Rejected** unless option A proves operationally infeasible.
+    - *C. Memo-only* (no on-chain split, restaurant honor system) — rejected by user.
+
+    **Atomicity within option A.** Hive transactions support multiple ops. Practical recipe:
+    - If both legs fit in HBD: **one Hive transaction with 2 native `transfer` ops**, atomic on-chain.
+    - If both legs fall back to EURO: **one Hive transaction with 2 `custom_json` ops** (atomic on Hive base layer; Hive-Engine sidechain settles each shortly after — failure rare since innopay knows its own balances).
+    - Mixed (one leg HBD, one leg EURO): two separate transactions. The base+sidechain async settlement makes mixed-op single-tx atomicity inconsistent across leg types.
+
+    **HBD/EURO allocation when innopay is short on HBD.**
+    - *Order leg gets HBD first*, tip leg gets the leftovers / EURO fallback. Simpler bookkeeping (one debtor at a time); HBD interest matters more on operating revenue than on lumpy tips. Proportional split (89%/11%) is possible but adds complexity for marginal benefit.
+    - Tip-leg EURO fallback recorded in the existing `outstanding_debt` table with `to_account: millewee-tips`. Liman's settlement job iterates over rows by account, so the new account just shows up — no schema change.
+
+    **Memo formats.**
+    - Customer → innopay: `<dishes> T:1.50 TABLE 5 kcs-inno-abc-1234` (already implemented in `useInnopayCart.getMemo()`).
+    - innopay → millewee (order leg): same shape, **keep the `T:1.50` segment** so the millewee CO page can render a "+ pourboire 1.50 €" chip on the order card. Restaurant operator sees that the patron tipped, even though the money went elsewhere.
+    - innopay → millewee-tips (tip leg): `tip 1.50 for-table 5 ref:abc-1234 kcs-inno-abc-1234`. The `ref:abc-1234` reuses the order's distriate-id so the two legs are linkable; `for-table N` lets a future tirelire-distribution dashboard route the tip to the actual waiter assigned to the table.
+
+    **Tip ledger (millewee-tips reporting).** Three options, increasing fidelity:
+    - *(1) No app-side ledger.* `millewee-tips` is a passive Hive account; balance and history read directly from Hive RPC. Manager checks via Hive Keychain or a small "Tirelire" admin page. Start here.
+    - *(2) Mirror in DB.* Register `millewee-tips` in merchant-hub, get a `tips` table populated by HAF polling. Same machinery as `millewee`, different account. Enables SQL aggregation on the accounting page.
+    - *(3) Single transfers table, source-tagged.* Add a `category` column on the existing `transfers` table; merchant-hub routes both accounts. Cleaner long-term, a touch more work.
+
+    **Setup checklist** (before any code):
+    1. Create the `millewee-tips` Hive account. **Open question 1**: who custodies the active key on day 1? Best guess: innopay holds it (matches Flow-7 trust model, lowest friction); restaurant requests payouts via a future UI.
+    2. Add `MILLEWEE_TIPS_ACCOUNT` env var to merchant-hub and innopay (and possibly the spoke if we want to display "Pourboire envoyé à @millewee-tips" anywhere).
+    3. Update innopay's webhook handler (Flow 6/7 paths in `handleTopup` and Flow 6 leg-2 logic): parse `T:X.XX` from the customer memo, compute `orderEur = totalEur - tipEur`, issue the two outgoing legs per the recipe above, track tip-debt separately when the EURO fallback fires.
+    4. Optionally register `millewee-tips` in merchant-hub now (HAF starts collecting from day 1, even if no UI yet) — supports option (2) tip ledger when the accounting page is built.
+
+    **Open questions to resolve before implementing:**
+    - Q1: who holds the active key for `millewee-tips` initially (innopay vs restaurant owner vs co-custody)?
+    - Q2: HBD/EURO allocation — confirm order-first priority over proportional split.
+    - Q3: tip leg memo format — accept the proposal above or refine?
+    - Q4: register `millewee-tips` in merchant-hub now or defer until accounting page work?
+    - Q5: keep `T:1.50` on the order leg's outgoing memo (CO chip) or strip it (cleaner separation)?
 
 - [ ] **Delayed orders — full UX port from indies / croque-bedaine**
   - Replace the interim block (above) with the indies/CB pattern: when kitchen is closed (or the customer wants to schedule), open a `DelayedOrderPanel` with a time picker that only emits kitchen-open slots from `getValidTimeSlots(requireKitchen=true)`. Drinks remain in the broader restaurant-hours window.

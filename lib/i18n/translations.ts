@@ -97,6 +97,17 @@ export const translations = {
     'schedule.reopensAt': 'Réouverture à {time}',
     'schedule.reopensOn': 'Réouverture {day} à {time}',
 
+    // Tip (pourboire)
+    'tip.button': 'Laisser un pourboire',
+    'tip.modifyButton': 'Pourboire {amount} € (modifier)',
+    'tip.subtotal': 'Sous-total',
+    'tip.label': 'Pourboire',
+    'tip.pickAmount': 'Choisissez un montant',
+    'tip.add': 'Ajouter le pourboire',
+    'tip.percent': '{n}%',
+    'tip.softWarning': 'C\'est généreux !',
+    'tip.hardCapNote': 'Maximum 50% du sous-total',
+
     // Landing (variant selector)
     'landing.tagline': 'Sp\u00e9cialit\u00e9s de burgers et plats du jour - Luxembourg',
     'landing.weeklyMenu': 'Menu de la semaine',
@@ -203,6 +214,17 @@ export const translations = {
     'schedule.reopensAt': 'Reopens at {time}',
     'schedule.reopensOn': 'Reopens {day} at {time}',
 
+    // Tip
+    'tip.button': 'Leave a tip',
+    'tip.modifyButton': 'Tip {amount} € (edit)',
+    'tip.subtotal': 'Subtotal',
+    'tip.label': 'Tip',
+    'tip.pickAmount': 'Pick an amount',
+    'tip.add': 'Add tip',
+    'tip.percent': '{n}%',
+    'tip.softWarning': 'That\'s generous!',
+    'tip.hardCapNote': 'Maximum 50% of subtotal',
+
     // Landing (variant selector)
     'landing.tagline': 'Burger specialties and daily specials - Luxembourg',
     'landing.weeklyMenu': 'Weekly menu',
@@ -308,6 +330,17 @@ export const translations = {
     'schedule.kitchenClosed': 'Kichen zou',
     'schedule.reopensAt': 'Mécht erëm op um {time}',
     'schedule.reopensOn': 'Mécht erëm op {day} um {time}',
+
+    // Tip (Pourboire)
+    'tip.button': 'E Pourboire ginn',
+    'tip.modifyButton': 'Pourboire {amount} € (änneren)',
+    'tip.subtotal': 'Ënnertotal',
+    'tip.label': 'Pourboire',
+    'tip.pickAmount': 'Wielt e Betrag',
+    'tip.add': 'Pourboire dobäisetzen',
+    'tip.percent': '{n}%',
+    'tip.softWarning': 'Dat ass generéis!',
+    'tip.hardCapNote': 'Maximal 50% vum Ënnertotal',
 
     // Landing (variant selector)
     'landing.tagline': 'Burger-Spezialit\u00e9iten a Platen vum Dag - L\u00ebtzebuerg',

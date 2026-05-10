@@ -88,9 +88,16 @@ export function useInnopayCart(): UseInnopayCartReturn {
   const getMemo = useCallback((): string => {
     const memoCartItems = getMemoCartItems();
     let memo = dehydrateMemo(memoCartItems);
+    // Tip segment, when present. Format: ` T:X.XX`. Sits between the
+    // dehydrated items and the ` TABLE N` suffix so the merchant-hub memo
+    // filter (`%-inno-%`) and the existing parsers stay backwards-compatible.
+    // The CO page can extract this with /\bT:(\d+\.\d{2})\b/ at hydration.
+    if (cart.tip > 0) {
+      memo += ` T:${cart.tip.toFixed(2)}`;
+    }
     memo += table ? ` TABLE ${table}` : '';
     return memo.trim();
-  }, [getMemoCartItems, table]);
+  }, [getMemoCartItems, table, cart.tip]);
 
   const getTotalEurPrice = useCallback((): string => {
     return cart.totalPrice.toFixed(2);

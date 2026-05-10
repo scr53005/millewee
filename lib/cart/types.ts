@@ -66,7 +66,29 @@ export function effectivePrice(item: CartItemData): number {
 
 export interface CartState {
   items: CartItem[];
+  /** Tip in EUR. Stored as an absolute amount (not a percentage) so it
+   *  survives subtotal changes coherently. Auto-clamped to subtotal × 0.5
+   *  by the reducer on item-changing actions. */
+  tip: number;
   version: number;
 }
 
-export const EMPTY_CART: CartState = { items: [], version: 1 };
+/** Hard cap on tip relative to subtotal (anti-laundering — see PROJECT-STATUS.md). */
+export const TIP_MAX_FRACTION = 0.5;
+/** Soft warning threshold above which the UI suggests "this is generous". */
+export const TIP_SOFT_WARNING_FRACTION = 0.3;
+
+export const CART_VERSION = 2;
+export const EMPTY_CART: CartState = { items: [], tip: 0, version: CART_VERSION };
+
+/** Sum of items × quantity, ignoring tip. */
+export function computeSubtotal(items: CartItem[]): number {
+  return items.reduce((sum, i) => sum + effectivePrice(i.item) * i.quantity, 0);
+}
+
+/** Clamp a tip value to the allowed range for the given subtotal. */
+export function clampTip(tip: number, subtotal: number): number {
+  if (!isFinite(tip) || tip <= 0 || subtotal <= 0) return 0;
+  const max = subtotal * TIP_MAX_FRACTION;
+  return Math.min(tip, max);
+}

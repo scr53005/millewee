@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ShoppingBag, Minus, Plus, Trash2, Bell, Loader2 } from 'lucide-react';
+import { ShoppingBag, Minus, Plus, Trash2, Bell, Loader2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   WalletNotificationBanner,
@@ -61,7 +61,9 @@ interface CartSheetProps {
 
 export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const { language, t } = useI18n();
-  const { items, removeItem, updateQuantity, updateComment, clearCart, totalPrice } = useCart();
+  // `clearCart` is still used by usePaymentFlow's onCartClear callback; the
+  // user-facing "Vider le panier" button is commented out below.
+  const { items, removeItem, updateQuantity, updateComment, clearCart, subtotal, tip, setTip, totalPrice } = useCart();
   const { startOrderPulsing } = useWalletPulse();
   const { restaurantOpen, kitchenOpen } = useScheduleStatus();
   const { table, getMemo } = useInnopayCart();
@@ -151,6 +153,38 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false);
   const [waiterReason, setWaiterReason] = useState('');
   const [isCallWaiterFlow, setIsCallWaiterFlow] = useState(false);
+
+  // Tip panel state (UI only — tip itself lives in the cart reducer).
+  const [tipPanelOpen, setTipPanelOpen] = useState(false);
+  const [tipInput, setTipInput] = useState('');
+
+  // Pre-fill the custom-amount input when opening the panel with an existing
+  // tip set, so "Modifier" feels like editing rather than starting over.
+  useEffect(() => {
+    if (tipPanelOpen) {
+      setTipInput(tip > 0 ? tip.toFixed(2) : '');
+    }
+  }, [tipPanelOpen, tip]);
+
+  const applyTipPercent = useCallback(
+    (pct: number) => {
+      if (subtotal <= 0) return;
+      const value = Math.round(subtotal * pct * 100) / 100;
+      setTip(value);
+      setTipPanelOpen(false);
+    },
+    [subtotal, setTip],
+  );
+
+  const parsedTipInput = parseFloat(tipInput.replace(',', '.'));
+  const applyTipCustom = useCallback(() => {
+    if (!isFinite(parsedTipInput) || parsedTipInput < 0) return;
+    setTip(parsedTipInput);
+    setTipPanelOpen(false);
+  }, [parsedTipInput, setTip]);
+
+  const tipSoftWarning =
+    isFinite(parsedTipInput) && subtotal > 0 && parsedTipInput > subtotal * 0.3;
 
   const bannerStatus = useMemo(() => {
     if (state.status === 'redirecting') return 'redirecting';
@@ -368,14 +402,117 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
 
           <SheetFooter className="border-t border-border pt-4">
             {items.length > 0 && (
-              <div className="flex items-center justify-between w-full mb-2">
-                <span className="text-base font-semibold">{t('cart.total')}</span>
-                <span className="text-lg font-bold text-primary">
-                  {totalPrice.toFixed(2)} {'\u20ac'}
-                </span>
-              </div>
+              <>
+                {/* Total / breakdown */}
+                {tip > 0 ? (
+                  <div className="w-full mb-2 space-y-0.5">
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{t('tip.subtotal')}</span>
+                      <span>{subtotal.toFixed(2)} {'\u20ac'}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <span>{t('tip.label')}</span>
+                      <span>{tip.toFixed(2)} {'\u20ac'}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-base font-semibold">{t('cart.total')}</span>
+                      <span className="text-lg font-bold text-primary">
+                        {totalPrice.toFixed(2)} {'\u20ac'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <span className="text-base font-semibold">{t('cart.total')}</span>
+                    <span className="text-lg font-bold text-primary">
+                      {totalPrice.toFixed(2)} {'\u20ac'}
+                    </span>
+                  </div>
+                )}
+
+                {/* Tip toggle */}
+                <button
+                  type="button"
+                  onClick={() => setTipPanelOpen((o) => !o)}
+                  className="w-full text-sm border border-border rounded-md py-2 px-3 mb-2 flex items-center justify-between hover:bg-muted/50 transition-colors"
+                >
+                  <span>
+                    {tip > 0
+                      ? t('tip.modifyButton').replace('{amount}', tip.toFixed(2))
+                      : t('tip.button')}
+                  </span>
+                  <ChevronDown
+                    className={`h-4 w-4 transition-transform ${tipPanelOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {/* Tip panel */}
+                {tipPanelOpen && (
+                  <div className="w-full mb-3 p-3 border border-border rounded-md bg-muted/20 space-y-2">
+                    <div className="flex gap-2">
+                      {[0.1, 0.15, 0.2].map((pct) => (
+                        <button
+                          key={pct}
+                          type="button"
+                          onClick={() => applyTipPercent(pct)}
+                          disabled={subtotal <= 0}
+                          className="flex-1 py-2 px-2 border border-border rounded-md hover:bg-primary/10 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {t('tip.percent').replace('{n}', String(Math.round(pct * 100)))}
+                          <span className="block text-xs opacity-75 mt-0.5">
+                            {(subtotal * pct).toFixed(2)} {'\u20ac'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground block">
+                        {t('tip.pickAmount')}
+                      </label>
+                      <div className="flex gap-2 items-center">
+                        {/* Width sized for at most "99.99" — the practical max
+                            tip — leaving the Ajouter button comfortable. */}
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          value={tipInput}
+                          onChange={(e) => {
+                            // Allow only digits and a single dot/comma; cap at 2 decimals.
+                            const cleaned = e.target.value.replace(/[^0-9.,]/g, '');
+                            const normalized = cleaned.replace(',', '.');
+                            const match = normalized.match(/^(\d*)(\.\d{0,2})?/);
+                            setTipInput(match ? match[0] : '');
+                          }}
+                          placeholder="0.00"
+                          className="w-16 flex-none h-9 border border-border rounded-md px-2 text-sm text-right bg-card text-card-foreground"
+                        />
+                        <span className="text-sm text-muted-foreground">{'€'}</span>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="flex-1"
+                          onClick={applyTipCustom}
+                          disabled={!isFinite(parsedTipInput) || parsedTipInput < 0}
+                        >
+                          {t('tip.add')}
+                        </Button>
+                      </div>
+                      {tipSoftWarning && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          {t('tip.softWarning')}
+                        </p>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        {t('tip.hardCapNote')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
+            {/* Commander + bell */}
             <div className="flex gap-2 w-full">
               <Button
                 className="flex-1"
@@ -412,16 +549,23 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
               </Button>
             </div>
 
-            {items.length > 0 && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full text-muted-foreground"
-                onClick={clearCart}
-              >
-                {t('cart.clear')}
-              </Button>
-            )}
+            {/*
+              "Vider le panier" link intentionally commented out (2026-05-09):
+              per-item trash buttons cover the use case and the vertical line
+              was wanted back for the tip toggle. Restore this block if
+              customer feedback shows people miss the bulk-clear.
+
+              {items.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-muted-foreground"
+                  onClick={clearCart}
+                >
+                  {t('cart.clear')}
+                </Button>
+              )}
+            */}
           </SheetFooter>
         </SheetContent>
       </Sheet>

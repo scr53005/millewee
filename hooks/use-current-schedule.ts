@@ -61,8 +61,25 @@ function nowMinutes(d: Date): number {
   return d.getHours() * 60 + d.getMinutes();
 }
 
+/** localStorage escape-hatch flag. When set to '1', the dev-environment
+ *  short-circuit below is disabled, so `isRestaurantOpen` / `isKitchenOpen`
+ *  honour the real schedule even on localhost / LAN IPs. Useful for testing
+ *  closed-state UX (banner copy, disabled buttons, drinks-only carts) from
+ *  a phone connected to the dev server.
+ *
+ *  Toggle via Eruda console:
+ *      localStorage.setItem('innopay_disable_dev_bypass', '1');  // simulate prod gating
+ *      localStorage.removeItem('innopay_disable_dev_bypass');    // restore bypass
+ *  Reload the page after toggling. Has no effect in production builds. */
+const DEV_BYPASS_OVERRIDE_KEY = 'innopay_disable_dev_bypass';
+
 export function isDevEnvironment(): boolean {
   if (typeof window === 'undefined') return false;
+  try {
+    if (localStorage.getItem(DEV_BYPASS_OVERRIDE_KEY) === '1') return false;
+  } catch {
+    // localStorage may be unavailable in some embedded contexts; fall through.
+  }
   const h = window.location.hostname;
   return h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.');
 }
@@ -112,9 +129,11 @@ export function useScheduleStatus(now: Date = new Date()) {
   return {
     restaurantOpen: isRestaurantOpen(now),
     kitchenOpen: isKitchenOpen(now),
-    nextKitchenOpening: getNextKitchenOpening(now),
+    /** Next kitchen window — used by the "Cuisine fermée" banner. */
+    nextKitchenOpening: getNextOpening('kitchen', now),
+    /** Next opening of any kind — used by the "Restaurant fermé" banner. */
+    nextRestaurantOpening: getNextOpening('restaurant', now),
     kitchenCloseTime: getKitchenCloseTime(now),
-    nextOpenDay: getNextOpenDay(now),
   };
 }
 
@@ -176,51 +195,69 @@ export function getKitchenCloseTime(now: Date = new Date()): string | null {
   return null;
 }
 
-/** Opening time of the next kitchen window today, or null if none remain. */
-export function getNextKitchenOpening(now: Date = new Date()): string | null {
-  const day = getDay(now);
-  if (!day) return null;
-  const t = nowMinutes(now);
-  const kitchen = day.resolved
-    .filter((s) => s.scope === 'kitchen')
-    .map((s) => ({ open: s.open, openMin: toMinutes(s.open) }))
-    .sort((a, b) => a.openMin - b.openMin);
-  for (const k of kitchen) {
-    if (k.openMin > t) return k.open;
-  }
-  return null;
-}
-
-/** Trilingual day name + opening time of the first day the restaurant reopens. */
-export function getNextOpenDay(now: Date = new Date()): {
+export interface NextOpening {
+  /** Day label in active language. Empty string when sameDay = true. */
   fr: string;
   en: string;
   lb: string;
+  /** "HH:MM" of the next opening. */
   openTime: string;
-} {
-  const frDays = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
-  const enDays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const lbDays = ['Sonndeg', 'Méindeg', 'Dënschdeg', 'Mëttwoch', 'Donneschdeg', 'Freideg', 'Samschdeg'];
+  /** True when the next opening is later today; false for tomorrow / next week. */
+  sameDay: boolean;
+}
 
-  for (let offset = 1; offset <= 7; offset++) {
+const FR_DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+const EN_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const LB_DAYS = ['Sonndeg', 'Méindeg', 'Dënschdeg', 'Mëttwoch', 'Donneschdeg', 'Freideg', 'Samschdeg'];
+
+/**
+ * Next opening for the given scope.
+ *  - scope = 'kitchen' considers only kitchen-scoped services.
+ *  - scope = 'restaurant' considers any service that keeps the restaurant
+ *    accessible (restaurant OR kitchen — kitchen-open ⇒ restaurant-open).
+ *
+ * Walks today first (only openings strictly after `now`), then up to 7 future
+ * days. This is what makes "Réouverture à 09:00" work correctly at 03:00 AM
+ * for a restaurant that opens at 09:00 the same morning, instead of leaping
+ * to "demain". Same shape used for kitchen-closed banner: at 15:00 between a
+ * 14:00-close lunch and an 18:00 dinner, returns 18:00 with sameDay = true.
+ */
+export function getNextOpening(
+  scope: 'restaurant' | 'kitchen',
+  now: Date = new Date(),
+): NextOpening | null {
+  const include = (s: ResolvedService) =>
+    scope === 'kitchen' ? s.scope === 'kitchen' : s.scope === 'restaurant' || s.scope === 'kitchen';
+
+  for (let offset = 0; offset <= 7; offset++) {
     const target = new Date(now);
     target.setDate(target.getDate() + offset);
     const day = cache.get(isoDateKey(target));
     if (!day) continue;
-    const earliest = day.resolved
-      .filter((s) => s.scope === 'restaurant' || s.scope === 'kitchen')
-      .map((s) => s.open)
-      .sort()[0];
-    if (!earliest) continue;
+
+    // For today, only consider opens strictly after the current minute.
+    // For future days, all opens are candidates (use a sentinel below 0).
+    const minMin = offset === 0 ? nowMinutes(now) : -1;
+
+    const candidates = day.resolved
+      .filter(include)
+      .map((s) => ({ open: s.open, openMin: toMinutes(s.open) }))
+      .filter((c) => c.openMin > minMin)
+      .sort((a, b) => a.openMin - b.openMin);
+
+    if (candidates.length === 0) continue;
+
+    const earliest = candidates[0];
     const dow = target.getDay();
     return {
-      fr: offset === 1 ? 'demain' : frDays[dow],
-      en: offset === 1 ? 'tomorrow' : enDays[dow],
-      lb: offset === 1 ? 'muer' : lbDays[dow],
-      openTime: earliest,
+      fr: offset === 0 ? '' : offset === 1 ? 'demain' : FR_DAYS[dow],
+      en: offset === 0 ? '' : offset === 1 ? 'tomorrow' : EN_DAYS[dow],
+      lb: offset === 0 ? '' : offset === 1 ? 'muer' : LB_DAYS[dow],
+      openTime: earliest.open,
+      sameDay: offset === 0,
     };
   }
-  return { fr: 'bientôt', en: 'soon', lb: 'geschwënn', openTime: '10:00' };
+  return null;
 }
 
 /**
