@@ -19,7 +19,7 @@
  */
 
 import { useScheduleStatus, type NextOpening } from '@/hooks/use-current-schedule';
-import { useI18n, type Language } from '@/lib/i18n';
+import { useI18n, type Language, type TranslationKey } from '@/lib/i18n';
 
 interface ScheduleClosedBannerProps {
   /** Set true on tabs where the kitchen-closed warning is irrelevant
@@ -36,7 +36,7 @@ function dayLabelFor(opening: NextOpening, language: Language): string {
 function reopeningCopy(
   opening: NextOpening,
   language: Language,
-  t: (key: string) => string,
+  t: (key: TranslationKey) => string,
 ): string {
   if (opening.sameDay) {
     return t('schedule.reopensAt').replace('{time}', opening.openTime);

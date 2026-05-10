@@ -47,3 +47,5 @@ next-env.d.ts
 # qr code images (not for production)
 /scripts/qrcodes/output_qrs/
 /scripts/qrcodes/__pycache__/
+
+.vercel

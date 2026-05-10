@@ -1,0 +1,11 @@
+{
+  "dishes": [
+    { "dish_id": 3,  "filename": "saladeCesar.webp",        "_label": "Salade César" },
+    { "dish_id": 4,  "filename": "saladeScampis.webp",      "_label": "Salade Scampis" },
+    { "dish_id": 18, "filename": "goujonsPoulet.webp",      "_label": "Goujons de Poulet" },
+    { "dish_id": 33, "filename": "cheeseburger.webp",       "_label": "Cheeseburger" }
+  ],
+  "drink_sizes": [
+    { "drink_id": 36, "size": "Verre", "filename": "vinBlancPinotGris.webp", "_label": "Pinot Gris (Verre)" }
+  ]
+}

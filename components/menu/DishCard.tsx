@@ -1,17 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
 import { useScheduleStatus } from '@/hooks/use-current-schedule';
+import { getDishVideoUrl } from '@/lib/dish-videos';
 import { type MenuDish } from '@/hooks/use-menu';
 import { type CartItemDish } from '@/lib/cart/types';
 import { AllergenIcons } from './AllergenIcons';
 import { AllergenModal } from './AllergenModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import { Plus, ChevronDown, ChevronUp, Info, Volume2, VolumeX } from 'lucide-react';
 // import { toast } from 'sonner';
 
 export type AllergenDisplayMode = 'inline' | 'modal';
@@ -46,6 +47,23 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
 
   const description = localized(dish, 'description');
   const name = localized(dish, 'name');
+  const videoUrl = getDishVideoUrl(dish.dish_id);
+
+  // Tap-to-unmute. Mobile browsers (iOS Safari especially) refuse to autoplay
+  // any video with audio, so we start muted and let the customer's tap supply
+  // the "user gesture" that unlocks sound. Resets every time the card is
+  // re-expanded — the <video> element only mounts when expanded.
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [audioUnmuted, setAudioUnmuted] = useState(false);
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setAudioUnmuted(!v.muted);
+    // Some browsers pause when toggling muted; nudge it back into playback.
+    void v.play().catch(() => {});
+  };
 
   const handleAdd = () => {
     const item: CartItemDish = {
@@ -88,8 +106,10 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
       className="rounded-lg border border-border bg-card overflow-hidden transition-all cursor-pointer newspaper-texture"
       onClick={() => setExpanded(!expanded)}
     >
-      {/* Collapsed view */}
-      <div className="flex items-center justify-between p-3 gap-2">
+      {/* Header \u2014 compact: 2 rows (name / price+allergens). Expanded: 1 row
+          (name + badges + price), allergens drop into the expanded body so we
+          can give the image more vertical room. */}
+      <div className={`flex items-center justify-between gap-2 ${expanded ? 'px-3 pt-3 pb-1.5' : 'p-3'}`}>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="font-medium text-card-foreground truncate">{name}</span>
@@ -103,19 +123,33 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
                 {t('badge.new')}
               </Badge>
             )}
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-sm font-semibold text-primary">
-              {finalPrice.toFixed(2)} {'\u20ac'}
-            </span>
-            {hasDiscount && (
-              <span className="text-xs text-muted-foreground line-through">
-                {(variantPrice ?? dish.price_eur).toFixed(2)} {'\u20ac'}
-              </span>
+            {expanded && (
+              <>
+                <span className="ml-auto text-sm font-semibold text-primary">
+                  {finalPrice.toFixed(2)} {'\u20ac'}
+                </span>
+                {hasDiscount && (
+                  <span className="text-xs text-muted-foreground line-through">
+                    {(variantPrice ?? dish.price_eur).toFixed(2)} {'\u20ac'}
+                  </span>
+                )}
+              </>
             )}
-            {/* Variant A: inline allergen emojis in collapsed view */}
-            {allergenDisplay === 'inline' && <AllergenIcons allergens={allergenInfos} />}
           </div>
+          {!expanded && (
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-sm font-semibold text-primary">
+                {finalPrice.toFixed(2)} {'\u20ac'}
+              </span>
+              {hasDiscount && (
+                <span className="text-xs text-muted-foreground line-through">
+                  {(variantPrice ?? dish.price_eur).toFixed(2)} {'\u20ac'}
+                </span>
+              )}
+              {/* Variant A: inline allergen emojis in collapsed view */}
+              {allergenDisplay === 'inline' && <AllergenIcons allergens={allergenInfos} />}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <Button
@@ -144,17 +178,50 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
             <p className="text-sm text-muted-foreground">{description}</p>
           )}
 
-          {/* Image */}
-          {dish.image_url && (
-            <div className="relative w-full h-32 rounded-md overflow-hidden bg-muted">
-              <Image
-                src={dish.image_url}
-                alt={name}
-                fill
-                sizes="(max-width: 768px) 100vw, 400px"
-                className="object-cover"
+          {/* Image or video. aspect-[4/3] matches the optimizer's 800x600 max
+              output so images fill the box cleanly without ugly cropping that
+              the previous fixed h-32 caused. Video uses the still image as its
+              poster so the visual lands instantly while the MP4 streams. */}
+          {videoUrl ? (
+            <div className="relative w-full aspect-[4/3] rounded-md overflow-hidden bg-muted">
+              <video
+                ref={videoRef}
+                src={videoUrl}
+                poster={dish.image_url ?? undefined}
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="auto"
+                className="w-full h-full object-cover"
               />
+              <button
+                type="button"
+                onClick={toggleMute}
+                aria-label={audioUnmuted ? 'Mute video' : 'Unmute video'}
+                className="absolute bottom-2 right-2 p-1.5 rounded-full bg-black/55 text-white hover:bg-black/75 transition-colors"
+              >
+                {audioUnmuted ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
+              </button>
             </div>
+          ) : (
+            dish.image_url && (
+              <div className="relative w-full aspect-[4/3] rounded-md overflow-hidden bg-muted">
+                <Image
+                  src={dish.image_url}
+                  alt={name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 400px"
+                  className="object-cover"
+                />
+              </div>
+            )
+          )}
+
+          {/* Allergens (inline mode only) — moved here from the header so the
+              header in expanded view can stay a single tight row. */}
+          {allergenDisplay === 'inline' && allergenInfos.length > 0 && (
+            <AllergenIcons allergens={allergenInfos} />
           )}
 
           {/* Variant selector */}
