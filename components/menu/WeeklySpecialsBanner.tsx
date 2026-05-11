@@ -1,19 +1,34 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
 import { useMenuSpecials } from '@/hooks/use-menu';
 import { type CartItemDish } from '@/lib/cart/types';
 import { Button } from '@/components/ui/button';
-import { Plus, Sparkles } from 'lucide-react';
+import { Check, Plus, Sparkles } from 'lucide-react';
 // import { toast } from 'sonner';
 
 export function WeeklySpecialsBanner() {
   const { t, localized } = useI18n();
   const { addItem } = useCart();
   const { data: specials = [] } = useMenuSpecials();
+  const [addedSpecialId, setAddedSpecialId] = useState<number | null>(null);
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    };
+  }, []);
 
   if (specials.length === 0) return null;
+
+  const flashAdded = (specialId: number) => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    setAddedSpecialId(specialId);
+    addedTimeoutRef.current = setTimeout(() => setAddedSpecialId(null), 850);
+  };
 
   const handleAdd = (special: (typeof specials)[0]) => {
     const dish = special.dish;
@@ -32,6 +47,7 @@ export function WeeklySpecialsBanner() {
     };
 
     addItem(item);
+    flashAdded(special.id);
     // const name = localized(dish, 'name');
     // toast.success(`${name} — ${t('cart.add')}`);
   };
@@ -51,6 +67,7 @@ export function WeeklySpecialsBanner() {
           const originalPrice = dish.price_eur;
           const specialPrice = special.special_price ?? originalPrice;
           const hasSpecialPrice = special.special_price != null && special.special_price < originalPrice;
+          const added = addedSpecialId === special.id;
 
           return (
             <div
@@ -74,11 +91,11 @@ export function WeeklySpecialsBanner() {
               <Button
                 size="sm"
                 variant="outline"
-                className="w-full h-7 text-xs border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                className={`w-full h-7 text-xs border-primary text-primary hover:bg-primary hover:text-primary-foreground ${added ? 'add-success' : ''}`}
                 onClick={() => handleAdd(special)}
               >
-                <Plus className="h-3 w-3 mr-1" />
-                {t('cart.add')}
+                {added ? <Check className="h-3 w-3 mr-1" /> : <Plus className="h-3 w-3 mr-1" />}
+                {added ? t('cart.added') : t('cart.add')}
               </Button>
             </div>
           );

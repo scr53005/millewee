@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
@@ -12,7 +12,7 @@ import { AllergenIcons } from './AllergenIcons';
 import { AllergenModal } from './AllergenModal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, ChevronDown, ChevronUp, Info, Volume2, VolumeX } from 'lucide-react';
+import { Check, Plus, ChevronDown, ChevronUp, Info, Volume2, VolumeX } from 'lucide-react';
 // import { toast } from 'sonner';
 
 export type AllergenDisplayMode = 'inline' | 'modal';
@@ -25,6 +25,7 @@ interface DishCardProps {
 export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [allergenModalOpen, setAllergenModalOpen] = useState(false);
+  const [addedControl, setAddedControl] = useState<'quick' | 'expanded' | null>(null);
   const [selectedVariantId, setSelectedVariantId] = useState<number | undefined>(
     dish.has_variants && dish.variants.length > 0 ? dish.variants[0].id : undefined,
   );
@@ -54,7 +55,20 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
   // the "user gesture" that unlocks sound. Resets every time the card is
   // re-expanded — the <video> element only mounts when expanded.
   const videoRef = useRef<HTMLVideoElement>(null);
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [audioUnmuted, setAudioUnmuted] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    };
+  }, []);
+
+  const flashAdded = (control: 'quick' | 'expanded') => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    setAddedControl(control);
+    addedTimeoutRef.current = setTimeout(() => setAddedControl(null), 850);
+  };
   const toggleMute = (e: React.MouseEvent) => {
     e.stopPropagation();
     const v = videoRef.current;
@@ -65,7 +79,7 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
     void v.play().catch(() => {});
   };
 
-  const handleAdd = () => {
+  const handleAdd = (control: 'quick' | 'expanded' = 'expanded') => {
     const item: CartItemDish = {
       type: 'dish',
       dishId: dish.dish_id,
@@ -87,6 +101,7 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
     }
 
     addItem(item);
+    flashAdded(control);
     // toast.success(`${name} — ${t('cart.add')}`);
   };
 
@@ -98,7 +113,7 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
       setExpanded(true);
       return;
     }
-    handleAdd();
+    handleAdd('quick');
   };
 
   return (
@@ -155,12 +170,20 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-primary hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed"
+            className={`h-8 text-primary hover:bg-primary/10 active:scale-90 transition-all disabled:opacity-40 disabled:cursor-not-allowed ${addedControl === 'quick' ? 'w-auto px-2 add-success' : 'w-8'}`}
             onClick={handleQuickAdd}
             disabled={!kitchenOpen}
             title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
+            aria-label={addedControl === 'quick' ? t('cart.added') : t('cart.add')}
           >
-            <Plus className="h-4 w-4" />
+            {addedControl === 'quick' ? (
+              <>
+                <Check className="h-4 w-4" />
+                <span className="ml-1 text-xs font-semibold">{t('cart.added')}</span>
+              </>
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
           </Button>
           {expanded ? (
             <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -261,13 +284,16 @@ export function DishCard({ dish, allergenDisplay = 'inline' }: DishCardProps) {
           <div className="flex gap-2">
             <Button
               size="sm"
-              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={handleAdd}
+              className={`flex-1 bg-primary text-primary-foreground hover:bg-primary/90 ${addedControl === 'expanded' ? 'add-success' : ''}`}
+              onClick={() => handleAdd('expanded')}
               disabled={!kitchenOpen}
               title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              {addedControl === 'expanded' ? <Check className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+              {addedControl === 'expanded' && t('cart.added')}
+              <span className={addedControl === 'expanded' ? 'hidden' : ''}>
               {t('cart.add')} — {finalPrice.toFixed(2)} {'\u20ac'}
+              </span>
             </Button>
 
             {/* Variant B: allergen info button in expanded view */}

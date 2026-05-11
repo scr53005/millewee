@@ -1,5 +1,5 @@
 // Service Worker for Millewee PWA
-const CACHE_NAME = 'millewee-shell-v1';
+const CACHE_NAME = 'millewee-shell-v2';
 const MENU_DATA_CACHE = 'millewee-menu-data-v1';
 const OFFLINE_URL = '/offline.html';
 
@@ -10,7 +10,7 @@ const PRECACHE_ASSETS = [
   '/images/favicon-48x48.png',
   '/images/logo_millewee_transp.png',
   '/logo2-192x192.png',
-  '/logo2-512x512.PNG',
+  '/logo2-512x512.png',
 ];
 
 self.addEventListener('install', (event) => {
@@ -45,6 +45,11 @@ self.addEventListener('fetch', (event) => {
 
   const requestUrl = new URL(event.request.url);
   if (requestUrl.origin !== self.location.origin) return;
+
+  if (requestUrl.pathname.startsWith('/admin')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
 
   if (requestUrl.pathname.startsWith('/api/menu/')) {
     event.respondWith(
@@ -101,7 +106,9 @@ self.addEventListener('fetch', (event) => {
       if (cachedResponse) return cachedResponse;
 
       return fetch(event.request).then((response) => {
-        if (response.ok) {
+        // 206 Partial Content (range requests for audio/video) cannot be cached
+        // by the Cache API — attempting to do so throws.
+        if (response.ok && response.status !== 206) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }

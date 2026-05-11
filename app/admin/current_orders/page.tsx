@@ -151,6 +151,7 @@ export default function CurrentOrdersPage() {
   const [menuError, setMenuError] = useState<string | null>(null);
   const [syncInfo, setSyncInfo] = useState<string>('');
   const [audioOn, setAudioOn] = useState(false);
+  const [printingOn, setPrintingOn] = useState(false);
   const [mutedOrders, setMutedOrders] = useState<Set<string>>(new Set());
 
   const [isPoller, setIsPoller] = useState(false);
@@ -160,6 +161,7 @@ export default function CurrentOrdersPage() {
   const bellRef = useRef<HTMLAudioElement | null>(null);
   const previousIdsRef = useRef<Set<string>>(new Set());
   const audioOnRef = useRef(audioOn);
+  const printingOnRef = useRef(printingOn);
   const mutedOrdersRef = useRef(mutedOrders);
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hafPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -180,6 +182,10 @@ export default function CurrentOrdersPage() {
   useEffect(() => {
     audioOnRef.current = audioOn;
   }, [audioOn]);
+
+  useEffect(() => {
+    printingOnRef.current = printingOn;
+  }, [printingOn]);
 
   useEffect(() => {
     mutedOrdersRef.current = mutedOrders;
@@ -240,6 +246,10 @@ export default function CurrentOrdersPage() {
       }
       return next;
     });
+  }, []);
+
+  const togglePrinting = useCallback(() => {
+    setPrintingOn((prev) => !prev);
   }, []);
 
   const enqueuePrint = useCallback((html: string) => {
@@ -424,7 +434,7 @@ export default function CurrentOrdersPage() {
 
       for (const tx of rehydrated) {
         const printKey = getPrintKey(tx);
-        if (!tx.isCallWaiter && !printedRef.current.has(printKey)) {
+        if (printingOnRef.current && !tx.isCallWaiter && !printedRef.current.has(printKey)) {
           const success = printOrderRef.current(tx);
           if (success) printedRef.current.add(printKey);
         }
@@ -459,7 +469,7 @@ export default function CurrentOrdersPage() {
         ringBellNow();
         for (const tx of newOnes) {
           const printKey = getPrintKey(tx);
-          if (!tx.isCallWaiter && !printedRef.current.has(printKey)) {
+          if (printingOnRef.current && !tx.isCallWaiter && !printedRef.current.has(printKey)) {
             const success = printOrderRef.current(tx);
             if (success) printedRef.current.add(printKey);
           }
@@ -526,7 +536,7 @@ export default function CurrentOrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [hydrate, ringBellNow, ringBellForOrder]);
+  }, [hydrate, isDev, ringBellNow, ringBellForOrder]);
 
   // Single-poller election. Only one CO page (across all spokes) drives the HAF
   // poll loop at any given time — the others just consume from Redis. This keeps
@@ -748,6 +758,16 @@ export default function CurrentOrdersPage() {
             >
               {audioOn ? <BellOff className="h-4 w-4 mr-1" /> : <Bell className="h-4 w-4 mr-1" />}
               {audioOn ? 'Couper le son' : 'Activer le son'}
+            </Button>
+            <Button
+              size="sm"
+              variant={printingOn ? 'secondary' : 'default'}
+              onClick={togglePrinting}
+              aria-pressed={printingOn}
+              className={printingOn ? '' : 'bg-[#8B0000] hover:bg-[#600000] text-white'}
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              {printingOn ? 'Arrêter impression' : 'Activer impression'}
             </Button>
             <Button size="sm" variant="ghost" onClick={handleLogout}>
               <LogOut className="h-4 w-4 mr-1" />

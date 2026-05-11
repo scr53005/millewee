@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
 import { type MenuDrink } from '@/hooks/use-menu';
 import { type CartItemDrink } from '@/lib/cart/types';
 import { Button } from '@/components/ui/button';
-import { Plus } from 'lucide-react';
+import { Check, Plus } from 'lucide-react';
 // import { toast } from 'sonner';
 
 interface DrinkCardProps {
@@ -17,6 +17,20 @@ interface DrinkCardProps {
 export function DrinkCard({ drink }: DrinkCardProps) {
   const { t, localized } = useI18n();
   const { addItem } = useCart();
+  const [added, setAdded] = useState(false);
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    };
+  }, []);
+
+  const flashAdded = () => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    setAdded(true);
+    addedTimeoutRef.current = setTimeout(() => setAdded(false), 850);
+  };
 
   // Default to first size
   const [selectedSize, setSelectedSize] = useState(drink.sizes[0]?.size ?? '');
@@ -62,6 +76,7 @@ export function DrinkCard({ drink }: DrinkCardProps) {
     };
 
     addItem(item);
+    flashAdded();
     // toast.success(`${name} — ${t('cart.add')}`);
   };
 
@@ -142,12 +157,12 @@ export function DrinkCard({ drink }: DrinkCardProps) {
       {/* Add button */}
       <Button
         size="sm"
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+        className={`w-full bg-primary text-primary-foreground hover:bg-primary/90 ${added ? 'add-success' : ''}`}
         onClick={handleAdd}
         disabled={!currentSize}
       >
-        <Plus className="h-4 w-4 mr-1" />
-        {t('cart.add')}
+        {added ? <Check className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+        {added ? t('cart.added') : t('cart.add')}
       </Button>
     </div>
   );

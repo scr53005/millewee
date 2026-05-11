@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useI18n } from '@/lib/i18n';
 import { useCart } from '@/hooks/use-cart';
 import { useMenuSpecials } from '@/hooks/use-menu';
@@ -13,7 +13,7 @@ import { ScheduleClosedBanner } from './ScheduleClosedBanner';
 import { useScheduleStatus } from '@/hooks/use-current-schedule';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Plus, Sparkles, UtensilsCrossed, Wine } from 'lucide-react';
+import { Check, Loader2, Plus, Sparkles, UtensilsCrossed, Wine } from 'lucide-react';
 
 type WeeklyTab = 'specials' | 'drinks';
 
@@ -24,10 +24,24 @@ interface WeeklyMenuPageProps {
 export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
   const [cartOpen, setCartOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<WeeklyTab>('specials');
+  const [addedSpecialId, setAddedSpecialId] = useState<number | null>(null);
   const { t, localized } = useI18n();
   const { addItem } = useCart();
   const { data: specials = [], isLoading, isError } = useMenuSpecials();
   const { kitchenOpen } = useScheduleStatus();
+  const addedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    };
+  }, []);
+
+  const flashAdded = (specialId: number) => {
+    if (addedTimeoutRef.current) clearTimeout(addedTimeoutRef.current);
+    setAddedSpecialId(specialId);
+    addedTimeoutRef.current = setTimeout(() => setAddedSpecialId(null), 850);
+  };
 
   const handleAdd = (special: (typeof specials)[0]) => {
     const dish = special.dish;
@@ -44,6 +58,7 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
     };
 
     addItem(item);
+    flashAdded(special.id);
   };
 
   return (
@@ -119,6 +134,7 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
                   const specialPrice = special.special_price ?? originalPrice;
                   const hasSpecialPrice =
                     special.special_price != null && special.special_price < originalPrice;
+                  const added = addedSpecialId === special.id;
 
                   return (
                     <article
@@ -151,13 +167,13 @@ export function WeeklyMenuPage({ onBackToHero }: WeeklyMenuPageProps) {
 
                       <Button
                         size="sm"
-                        className="w-full"
+                        className={`w-full ${added ? 'add-success' : ''}`}
                         onClick={() => handleAdd(special)}
                         disabled={!kitchenOpen}
                         title={!kitchenOpen ? t('schedule.kitchenClosed') : undefined}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
-                        {kitchenOpen ? t('cart.add') : t('schedule.kitchenClosed')}
+                        {added ? <Check className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                        {added ? t('cart.added') : kitchenOpen ? t('cart.add') : t('schedule.kitchenClosed')}
                       </Button>
                     </article>
                   );

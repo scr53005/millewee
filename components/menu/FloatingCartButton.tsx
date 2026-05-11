@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useCart } from '@/hooks/use-cart';
 import Draggable from '@/components/innopay/Draggable';
 import { ShoppingBag } from 'lucide-react';
@@ -41,10 +41,23 @@ function getInitialPosition() {
 export function FloatingCartButton({ onClick }: FloatingCartButtonProps) {
   const { totalItems, totalPrice } = useCart();
   const [initialPosition, setInitialPosition] = useState<{ x: number; y: number } | null>(null);
+  const [bumpToken, setBumpToken] = useState(0);
+  const prevItemsRef = useRef(totalItems);
 
   useEffect(() => {
-    setInitialPosition(getInitialPosition());
+    const id = window.setTimeout(() => setInitialPosition(getInitialPosition()), 0);
+    return () => window.clearTimeout(id);
   }, []);
+
+  // Fire the bump animation whenever an item is added (totalItems increases).
+  useEffect(() => {
+    if (totalItems > prevItemsRef.current) {
+      const id = window.setTimeout(() => setBumpToken((token) => token + 1), 0);
+      prevItemsRef.current = totalItems;
+      return () => window.clearTimeout(id);
+    }
+    prevItemsRef.current = totalItems;
+  }, [totalItems]);
 
   if (totalItems === 0 || !initialPosition) return null;
 
@@ -57,9 +70,10 @@ export function FloatingCartButton({ onClick }: FloatingCartButtonProps) {
       }}
     >
       <button
+        key={bumpToken}
         onClick={onClick}
         aria-label="Ouvrir le panier"
-        className="flex min-h-12 items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-colors hover:bg-primary/90"
+        className={`flex min-h-12 items-center gap-2 rounded-full bg-primary px-4 py-3 text-primary-foreground shadow-lg transition-colors hover:bg-primary/90 ${bumpToken > 0 ? 'animate-cart-bump' : ''}`}
       >
         <ShoppingBag className="h-5 w-5" />
         <span className="font-semibold text-sm">{totalPrice.toFixed(2)} {'\u20ac'}</span>

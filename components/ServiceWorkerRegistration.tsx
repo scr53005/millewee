@@ -9,6 +9,25 @@ export default function ServiceWorkerRegistration() {
       return;
     }
 
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+        .then(() => caches.keys())
+        .then((cacheNames) => Promise.all(cacheNames.map((cacheName) => caches.delete(cacheName))))
+        .then(() => {
+          console.log('[SW] Cleared service workers and caches in development');
+        })
+        .catch((error) => {
+          console.warn('[SW] Development cleanup failed:', error);
+        });
+      return;
+    }
+
+    if (window.location.pathname.startsWith('/admin')) {
+      return;
+    }
+
     const register = () => {
       navigator.serviceWorker
         .register('/sw.js')
