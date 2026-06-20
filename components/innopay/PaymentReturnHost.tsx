@@ -147,7 +147,9 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
             // password is the owner-deriving secret and must never be stored; the
             // posting key is never used to sign. `postingKey` is still read above only
             // to feed the one-time credential-display banner (Credentials state below).
-            saveKeys({ accountName: data.accountName, activeKey, memoKey });
+            // Awaited so the encrypted store + in-memory cache are populated before
+            // the post-return reload (SPOKE-KEY-SECURITY.md §9 — saveKeys is async).
+            await saveKeys({ accountName: data.accountName, activeKey, memoKey });
 
             const balanceToTrust =
               flowParam === '7' && optimisticBalance !== null

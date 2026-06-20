@@ -219,7 +219,7 @@ export default function ImportAccountModal({
       if (data.success === true) {
         if (data.single === true) {
           console.log('[IMPORT] Single account found:', data.accountName);
-          saveCredentials(data);
+          await saveCredentials(data);
           onSuccess?.(data.accountName);
           window.location.reload();
         } else {
@@ -260,7 +260,7 @@ export default function ImportAccountModal({
       console.log('[IMPORT] Credentials response:', data);
 
       if (data.accountName) {
-        saveCredentials(data);
+        await saveCredentials(data);
         onSuccess?.(data.accountName);
         window.location.reload();
       } else if (data.error) {
@@ -274,14 +274,16 @@ export default function ImportAccountModal({
     }
   }, [email, t, showError, onSuccess]);
 
-  const saveCredentials = (data: {
+  const saveCredentials = async (data: {
     accountName: string;
     masterPassword?: string;
     keys?: { active: string; posting: string; memo: string };
   }) => {
     // Flow 8 re-import persists ONLY active + memo (SPOKE-KEY-SECURITY.md §4) —
-    // never the master password or posting key.
-    saveKeys({
+    // never the master password or posting key. Awaited (saveKeys is async in
+    // Phase 1: it encrypts at rest + refreshes the in-memory cache) so the store
+    // is populated before the post-import reload.
+    await saveKeys({
       accountName: data.accountName,
       activeKey: data.keys?.active,
       memoKey: data.keys?.memo,
