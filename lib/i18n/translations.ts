@@ -54,6 +54,14 @@ export const translations = {
 
     // Table
     'table.label': 'Table',
+    'table.changePrompt': 'Numéro de table:',
+    'table.editTitle': 'Changer de table',
+    'table.invalid': 'Numéro de table invalide.',
+    'table.notExist': "Cette table n'existe pas.",
+    'table.didYouMean': "Cette table n'existe pas. Vouliez-vous dire la table",
+    'table.save': 'Valider',
+    'table.cancel': 'Annuler',
+    'table.useSuggestion': 'Oui',
 
     // Innopay Wallet
     'wallet.title': 'Votre portefeuille Innopay',
@@ -172,6 +180,14 @@ export const translations = {
 
     // Table
     'table.label': 'Table',
+    'table.changePrompt': 'Table number:',
+    'table.editTitle': 'Change table',
+    'table.invalid': 'Invalid table number.',
+    'table.notExist': 'This table does not exist.',
+    'table.didYouMean': 'This table does not exist. Did you mean table',
+    'table.save': 'Confirm',
+    'table.cancel': 'Cancel',
+    'table.useSuggestion': 'Yes',
 
     // Innopay Wallet
     'wallet.title': 'Your Innopay wallet',
@@ -290,6 +306,14 @@ export const translations = {
 
     // Table
     'table.label': 'Dësch',
+    'table.changePrompt': 'Dëschnummer:',
+    'table.editTitle': 'Dësch wiesselen',
+    'table.invalid': 'Ongëlteg Dëschnummer.',
+    'table.notExist': 'Dësen Dësch existéiert net.',
+    'table.didYouMean': 'Dësen Dësch existéiert net. Mengt Dir den Dësch',
+    'table.save': 'Bestätegen',
+    'table.cancel': 'Ofbriechen',
+    'table.useSuggestion': 'Jo',
 
     // Innopay Wallet
     'wallet.title': 'Äre Innopay Portmonni',

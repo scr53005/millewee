@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import { useI18n, languages } from '@/lib/i18n';
 import { useTable } from '@/lib/table-context';
 import { useCart } from '@/hooks/use-cart';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { TableEditDialog } from '@/components/menu/TableEditDialog';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -21,8 +23,9 @@ interface MenuHeaderProps {
 
 export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
   const { language, setLanguage, t } = useI18n();
-  const { tableNumber } = useTable();
+  const { tableNumber, setTable } = useTable();
   const { totalItems } = useCart();
+  const [tableDialogOpen, setTableDialogOpen] = useState(false);
 
   const currentLang = languages.find((l) => l.code === language)!;
 
@@ -52,6 +55,7 @@ export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
   );
 
   return (
+    <>
     <header className="sticky top-0 z-30 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="flex items-center justify-between px-3 py-2 max-w-4xl mx-auto">
         {/* Logo + title — tappable when onLogoClick is provided (A/B toggle) */}
@@ -71,11 +75,18 @@ export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
 
         {/* Right side controls */}
         <div className="flex items-center gap-1.5">
-          {/* Table indicator */}
+          {/* Table indicator — tap to change table (canonical across spokes).
+              Opens a validated dialog rather than a blocking prompt so the real
+              table list can be fetched in the background while it's open. */}
           {tableNumber && (
-            <span className="text-xs font-medium text-muted-foreground px-1.5">
+            <button
+              type="button"
+              onClick={() => setTableDialogOpen(true)}
+              className="text-xs font-medium text-muted-foreground px-1.5 underline decoration-dotted underline-offset-2 cursor-pointer hover:text-foreground transition-colors"
+              title={t('table.editTitle')}
+            >
               {t('table.label')} {tableNumber}
-            </span>
+            </button>
           )}
 
           {/* Language switcher — DropdownMenuTrigger already renders <button>, don't nest a Button inside */}
@@ -115,5 +126,13 @@ export function MenuHeader({ onCartOpen, onLogoClick }: MenuHeaderProps) {
         </div>
       </div>
     </header>
+
+    <TableEditDialog
+      open={tableDialogOpen}
+      onOpenChange={setTableDialogOpen}
+      currentTable={tableNumber ?? ''}
+      onConfirm={setTable}
+    />
+    </>
   );
 }
