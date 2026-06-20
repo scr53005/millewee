@@ -6,6 +6,7 @@ import BottomBanner from './BottomBanner';
 import { useBalance } from '@/hooks/innopay/useBalance';
 import { useWalletPulse } from '@/hooks/use-wallet-pulse';
 import { useI18n } from '@/lib/i18n';
+import { getAccountName, purgeForbidden } from '@/lib/innopay/keystore';
 
 const WALLET_HIDDEN_KEY = 'innopay_wallet_hidden';
 
@@ -17,19 +18,22 @@ export function InnopayChrome() {
 
   useEffect(() => {
     setMounted(true);
-    setAccountName(localStorage.getItem('innopay_accountName'));
+    // One-time, idempotent purge of legacy forbidden keys (master password / posting
+    // key) from returning customers' browsers — SPOKE-KEY-SECURITY.md §4 step 3.
+    purgeForbidden();
+    setAccountName(getAccountName());
     setWalletHidden(localStorage.getItem(WALLET_HIDDEN_KEY) === '1');
 
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'innopay_accountName') {
-        setAccountName(localStorage.getItem('innopay_accountName'));
+        setAccountName(getAccountName());
       }
       if (e.key === WALLET_HIDDEN_KEY) {
         setWalletHidden(localStorage.getItem(WALLET_HIDDEN_KEY) === '1');
       }
     };
     const onCredentialsUpdated = () => {
-      setAccountName(localStorage.getItem('innopay_accountName'));
+      setAccountName(getAccountName());
       setWalletHidden(localStorage.getItem(WALLET_HIDDEN_KEY) === '1');
     };
     window.addEventListener('storage', onStorage);

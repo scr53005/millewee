@@ -28,6 +28,7 @@ import {
   checkDuplicateMemo,
   storeMemoBeforeOrder,
 } from '@/lib/innopay/utils';
+import { getAccountName, getActiveKey } from '@/lib/innopay/keystore';
 
 // Guest checkout processing fee (5%)
 const GUEST_CHECKOUT_FEE_RATE = 0.05;
@@ -156,7 +157,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
   // Check if user has an account (read once at mount; localStorage guarded)
   const hasAccount = useMemo(() => {
     if (typeof window === 'undefined') return false;
-    return !!localStorage.getItem('innopay_accountName');
+    return !!getAccountName();
   }, []);
 
   // Derive UI state from machine state
@@ -226,7 +227,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           }
 
           if (flow === 7) {
-            const accountName = localStorage.getItem('innopay_accountName');
+            const accountName = getAccountName();
             if (accountName) params.set('account', accountName);
             params.set('topup_for', 'order');
           }
@@ -445,11 +446,12 @@ async function executeWaiterCall(
     return;
   }
 
-  const accountName = localStorage.getItem('innopay_accountName');
-  const activeKey = localStorage.getItem('innopay_activePrivate');
-  const masterPassword = localStorage.getItem('innopay_masterPassword');
+  const accountName = getAccountName();
+  const activeKey = getActiveKey();
 
-  if (!accountName || (!activeKey && !masterPassword)) {
+  // "Mixed" posture (SPOKE-KEY-SECURITY.md §4): an account is enough — a missing
+  // local active key is signed via the seamless innopay-authority fallback below.
+  if (!accountName) {
     throw new Error('Missing credentials');
   }
 
@@ -469,7 +471,8 @@ async function executeWaiterCall(
   if (activeKey) {
     signPayload.activePrivateKey = activeKey;
   } else {
-    signPayload.masterPassword = masterPassword;
+    // No local active key → seamless innopay-authority fallback (mixed posture).
+    signPayload.useInnopayAuthority = true;
     signPayload.accountName = accountName;
   }
 
@@ -501,9 +504,8 @@ async function executeFlow6Payment(
 ): Promise<void> {
   const { createEuroTransferOperation, distriate } = await import('@/lib/innopay/utils');
 
-  const accountName = localStorage.getItem('innopay_accountName')!;
-  const activeKey = localStorage.getItem('innopay_activePrivate');
-  const masterPassword = localStorage.getItem('innopay_masterPassword');
+  const accountName = getAccountName()!;
+  const activeKey = getActiveKey();
 
   const suffix = distriate('kcs');
   const amountEuro = amount.toFixed(3);
@@ -518,8 +520,9 @@ async function executeFlow6Payment(
   const signPayload: Record<string, unknown> = { operation: euroOp };
   if (activeKey) {
     signPayload.activePrivateKey = activeKey;
-  } else if (masterPassword) {
-    signPayload.masterPassword = masterPassword;
+  } else {
+    // No local active key → seamless innopay-authority fallback (mixed posture).
+    signPayload.useInnopayAuthority = true;
     signPayload.accountName = accountName;
   }
 

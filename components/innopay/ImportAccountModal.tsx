@@ -13,6 +13,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { getInnopayUrl } from '@/lib/innopay/utils';
+import { saveKeys } from '@/lib/innopay/keystore';
 
 interface AccountInfo {
   accountName: string;
@@ -278,14 +279,13 @@ export default function ImportAccountModal({
     masterPassword?: string;
     keys?: { active: string; posting: string; memo: string };
   }) => {
-    localStorage.setItem('innopay_accountName', data.accountName);
-    localStorage.setItem('innopay_masterPassword', data.masterPassword || '');
-
-    if (data.keys) {
-      localStorage.setItem('innopay_activePrivate', data.keys.active);
-      localStorage.setItem('innopay_postingPrivate', data.keys.posting);
-      localStorage.setItem('innopay_memoPrivate', data.keys.memo);
-    }
+    // Flow 8 re-import persists ONLY active + memo (SPOKE-KEY-SECURITY.md §4) —
+    // never the master password or posting key.
+    saveKeys({
+      accountName: data.accountName,
+      activeKey: data.keys?.active,
+      memoKey: data.keys?.memo,
+    });
   };
 
   if (!visible) return null;

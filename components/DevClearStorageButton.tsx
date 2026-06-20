@@ -1,16 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { clearCredentials } from '@/lib/innopay/keystore';
 
+// Credential keys (accountName, active, memo, blob + forbidden leftovers) are cleared
+// via clearCredentials() — see SPOKE-KEY-SECURITY.md. Only non-credential keys remain here.
 const STORAGE_KEYS_TO_CLEAR = [
-  'innopay_accountName',
-  'innopay_masterPassword',
-  'innopay_activePrivate',
-  'innopay_postingPrivate',
-  'innopay_memoPrivate',
   'innopay_import_attempts',
   'innopay_accounts',
-  'innopay_wallet_credentials',
   'innopay_lastBalance',
   'innopay_lastBalance_timestamp',
   'innopay_balance_trustUntil',
@@ -60,6 +57,7 @@ export function DevClearStorageButton() {
     if (table) preserved.set('table', table);
     if (menu) preserved.set('menu', menu);
 
+    clearCredentials();
     for (const key of STORAGE_KEYS_TO_CLEAR) {
       localStorage.removeItem(key);
     }

@@ -12,6 +12,7 @@ import {
   type Language,
 } from '@/lib/innopay/paymentStateMachine';
 import { getInnopayUrl } from '@/lib/innopay/utils';
+import { saveKeys } from '@/lib/innopay/keystore';
 import StatusBanners from './StatusBanners';
 
 const messages: Record<Language, {
@@ -139,14 +140,14 @@ function PaymentReturnHostInner({ language = 'fr' }: PaymentReturnHostProps) {
 
           if (response.ok) {
             const data = await response.json();
-            localStorage.setItem('innopay_accountName', data.accountName);
-            localStorage.setItem('innopay_masterPassword', data.masterPassword);
             const activeKey = data.keys?.active?.privateKey || data.activeKey;
             const postingKey = data.keys?.posting?.privateKey || data.postingKey;
             const memoKey = data.keys?.memo?.privateKey || data.memoKey;
-            if (activeKey) localStorage.setItem('innopay_activePrivate', activeKey);
-            if (postingKey) localStorage.setItem('innopay_postingPrivate', postingKey);
-            if (memoKey) localStorage.setItem('innopay_memoPrivate', memoKey);
+            // Persist ONLY active + memo (SPOKE-KEY-SECURITY.md §4): the master
+            // password is the owner-deriving secret and must never be stored; the
+            // posting key is never used to sign. `postingKey` is still read above only
+            // to feed the one-time credential-display banner (Credentials state below).
+            saveKeys({ accountName: data.accountName, activeKey, memoKey });
 
             const balanceToTrust =
               flowParam === '7' && optimisticBalance !== null
