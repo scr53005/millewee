@@ -29,6 +29,7 @@ import { usePaymentFlow } from '@/hooks/innopay/usePaymentFlow';
 import { useBalance } from '@/hooks/innopay/useBalance';
 import { effectivePrice } from '@/lib/cart/types';
 import { getHiveAccount } from '@/lib/innopay/utils';
+import { getAccountName } from '@/lib/innopay/keystore';
 import {
   Sheet,
   SheetContent,
@@ -82,12 +83,12 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
   // Read account name once and keep it reactive across tabs via the storage event
   const [accountName, setAccountName] = useState<string | null>(() => {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('innopay_accountName');
+    return getAccountName();
   });
 
   useEffect(() => {
     const syncAccount = () => {
-      setAccountName(localStorage.getItem('innopay_accountName'));
+      setAccountName(getAccountName());
     };
     window.addEventListener('storage', syncAccount);
     return () => window.removeEventListener('storage', syncAccount);
@@ -115,6 +116,11 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
     onDuplicateDetected: () => {
       setShowDuplicateModal(true);
     },
+    // In-app Flow 6 ("pay with wallet") never leaves the tab, so the pulse
+    // machine gets no focus/visibility event to re-arm its poll. Kick it
+    // explicitly when the wallet payment lands, mirroring how the external-wallet
+    // redirect path drives `startOrderPulsing` via `onExternalWalletRedirect`.
+    onPulseStart: startOrderPulsing,
     skipDuplicateCheckRef,
   });
 
@@ -593,7 +599,7 @@ export function CartSheet({ open, onOpenChange }: CartSheetProps) {
         onClose={() => setShowImportModal(false)}
         onSuccess={() => {
           setShowImportModal(false);
-          setAccountName(localStorage.getItem('innopay_accountName'));
+          setAccountName(getAccountName());
           toast.success(language === 'fr' ? 'Compte importe !' : 'Account imported!');
           actions.reset();
         }}
