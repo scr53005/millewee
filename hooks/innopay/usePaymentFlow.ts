@@ -33,6 +33,11 @@ import { getAccountName, getActiveKey } from '@/lib/innopay/keystore';
 // Guest checkout processing fee (5%)
 const GUEST_CHECKOUT_FEE_RATE = 0.05;
 
+// Symbolic fee for a waiter call. With an account it's a direct on-chain transfer; with no
+// account it becomes the "order" of a Flow 5 onboarding (the hub then charges the account-
+// creation minimum, of which this is a tiny part).
+const WAITER_FEE = 0.02;
+
 /** Round UP to nearest cent for guest checkout total with 5% processing fee. */
 function calculateGuestCheckoutTotal(baseAmount: number): number {
   const totalWithFee = baseAmount * (1 + GUEST_CHECKOUT_FEE_RATE);
@@ -327,14 +332,14 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
       dispatch({ type: 'PROCESSING_UPDATE', message: t.waiterCalling });
 
       try {
-        await executeWaiterCall(table, hiveAccount, hubUrl, hasAccount, reason);
+        await executeWaiterCall(table, hiveAccount, hubUrl, restaurantId, hasAccount, reason);
         dispatch({ type: 'WAITER_CALLED', table });
       } catch (err) {
         console.error('[callWaiter] Error:', err);
         dispatch({ type: 'ERROR', error: t.waiterCallFailed, canRetry: true });
       }
     },
-    [table, hiveAccount, hubUrl, hasAccount, t],
+    [table, hiveAccount, hubUrl, restaurantId, hasAccount, t],
   );
 
   // Flow 6 - pay directly with existing account (no redirect)
@@ -433,16 +438,41 @@ async function executeWaiterCall(
   table: string,
   hiveAccount: string,
   hubUrl: string,
+  restaurantId: string,
   hasAccount: boolean,
   reason?: string,
 ): Promise<void> {
-  const { encodeComment, distriate, createEuroTransferOperation } = await import(
+  const { encodeComment, distriate, createEuroTransferOperation, storeMemoBeforeOrder } = await import(
     '@/lib/innopay/utils'
   );
   const reasonEncoded = reason?.trim() ? ` n:${encodeComment(reason.trim())}` : '';
 
   if (!hasAccount) {
-    window.location.href = `${hubUrl}/waiter?table=${table}&recipient=${hiveAccount}`;
+    // No account → onboard via Flow 5 (create account), carrying the symbolic waiter call as
+    // the order. The hub has no standalone /waiter page; the old guest redirect 404s in every
+    // spoke. See SPOKE-DOCUMENTATION.md → "Call-waiter without an account".
+    const suffix = distriate();
+    const waiterMemo = `Un serveur est appele${reasonEncoded} TABLE ${table} ${suffix}`;
+    storeMemoBeforeOrder(waiterMemo);
+
+    const returnParams = new URLSearchParams(window.location.search);
+    if (table) returnParams.set('table', table);
+    const returnQuery = returnParams.toString();
+    const returnUrl = `${window.location.origin}${window.location.pathname}${
+      returnQuery ? `?${returnQuery}` : ''
+    }`;
+
+    const params = new URLSearchParams();
+    params.set('restaurant', restaurantId);
+    params.set('restaurant_account', hiveAccount);
+    params.set('table', table);
+    params.set('order_amount', WAITER_FEE.toFixed(2));
+    params.set('memo', waiterMemo);
+    params.set('return_url', returnUrl);
+    params.set('choice', 'create');
+    localStorage.setItem('innopay_flow_pending', 'flow5_create_and_pay');
+
+    window.location.href = `${hubUrl}/user?${params.toString()}`;
     return;
   }
 
@@ -459,7 +489,7 @@ async function executeWaiterCall(
   const operation = createEuroTransferOperation(
     accountName,
     hiveAccount,
-    '0.020',
+    WAITER_FEE.toFixed(3),
     `Un serveur est appele${reasonEncoded} TABLE ${table} ${suffix}`,
   );
 
