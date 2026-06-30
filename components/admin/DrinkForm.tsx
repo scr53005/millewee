@@ -111,7 +111,9 @@ export function DrinkForm({ drink, onSubmit, onCancel, loading }: DrinkFormProps
         name_fr: s.name_fr,
         name_en: s.name_en,
         name_lb: s.name_lb,
-        price_delta: parseFloat(s.price_delta) || 0,
+        // Flat ('selection') drinks are flavor picks with no surcharge → always 0. Only
+        // 'variant' drinks carry a real per-choice delta. (The API enforces this too.)
+        price_delta: selectionMode === 'variant' ? parseFloat(s.price_delta) || 0 : 0,
         sort_order: s.sort_order,
         is_available: s.is_available,
       })),
@@ -199,8 +201,11 @@ export function DrinkForm({ drink, onSubmit, onCancel, loading }: DrinkFormProps
                   <Input value={s.name_fr} onChange={(e) => updateSelection(idx, 'name_fr', e.target.value)}
                     placeholder="Nom (FR)" className="bg-white text-gray-900 text-sm" required />
                   <div className="flex gap-2 items-center">
-                    <Input value={s.price_delta} onChange={(e) => updateSelection(idx, 'price_delta', e.target.value)}
-                      placeholder="Delta prix" type="number" step="0.01" className="bg-white text-gray-900 text-sm w-24" />
+                    {/* Delta only makes sense for 'variant' drinks; flat 'selection' flavors never add price. */}
+                    {selectionMode === 'variant' && (
+                      <Input value={s.price_delta} onChange={(e) => updateSelection(idx, 'price_delta', e.target.value)}
+                        placeholder="Delta prix" type="number" step="0.01" className="bg-white text-gray-900 text-sm w-24" />
+                    )}
                     <AvailabilityToggle isAvailable={s.is_available}
                       onToggle={() => updateSelection(idx, 'is_available', !s.is_available)} />
                   </div>

@@ -55,6 +55,16 @@ export async function PUT(
 
     // Replace selections
     if (selections !== undefined) {
+      // A flat ('selection') drink's selections are flavor picks with no surcharge → force
+      // every price_delta to 0 (defense-in-depth; the customer card double-counts base + delta).
+      // Read the just-updated mode so partial updates that omit selection_mode still apply the
+      // right rule. 'variant' drinks keep their deltas (real per-choice price differences).
+      const current = await prisma.drink.findUnique({
+        where: { drink_id: drinkId },
+        select: { selection_mode: true },
+      });
+      const flatDrink = current?.selection_mode === 'selection';
+
       await prisma.drink_selection.deleteMany({ where: { drink_id: drinkId } });
       if (selections.length > 0) {
         await prisma.drink_selection.createMany({
@@ -63,7 +73,7 @@ export async function PUT(
             name_fr: s.name_fr,
             name_en: s.name_en || null,
             name_lb: s.name_lb || null,
-            price_delta: s.price_delta ?? 0,
+            price_delta: flatDrink ? 0 : (s.price_delta ?? 0),
             sort_order: s.sort_order ?? 0,
             is_available: s.is_available ?? true,
           })),

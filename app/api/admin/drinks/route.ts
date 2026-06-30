@@ -25,6 +25,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = drinkSchema.parse(body);
 
+    // A flat ('selection') drink's selections are flavor picks with no surcharge, so force
+    // every price_delta to 0 server-side. Guards against a stale/buggy client persisting a
+    // delta that the customer card would then double-count (base + delta). 'variant' drinks
+    // keep their deltas (genuine per-choice price differences).
+    const flatDrink = (data.selection_mode || null) === 'selection';
+
     const drink = await prisma.drink.create({
       data: {
         name_fr: data.name_fr,
@@ -50,7 +56,7 @@ export async function POST(request: NextRequest) {
             name_fr: s.name_fr,
             name_en: s.name_en || null,
             name_lb: s.name_lb || null,
-            price_delta: s.price_delta,
+            price_delta: flatDrink ? 0 : s.price_delta,
             sort_order: s.sort_order,
             is_available: s.is_available,
           })),
