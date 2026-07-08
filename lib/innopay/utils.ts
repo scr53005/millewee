@@ -323,7 +323,14 @@ export interface HydrationResult {
   identifier: string | null;
   timing: OrderTiming | null;
   preferredTable: boolean;
+  /** Tip amount in EUR ("1.50") from the ` T:X.XX` memo token, or null. */
+  tip: string | null;
 }
+
+// Tip token appended by useInnopayCart.getMemo between the items and ` TABLE N`.
+// Strict decimal format (always toFixed(2) at encode time) so free text like
+// call-waiter reasons can't false-match.
+const TIP_TOKEN_REGEX = /\s+T:(\d+\.\d{2})(?=\s|$)/;
 
 export interface MenuDataForHydration {
   dishes: Map<number, { dish_id: number; name: string }>;
@@ -374,6 +381,17 @@ export function hydrateMemoFull(rawMemo: string, menuData?: MenuDataForHydration
 
   const preferredTable = timing?.type === 'dinein' && table !== null;
 
+  // Extract the tip token BEFORE item parsing. It directly follows the last
+  // item (`...,n:BASE64 T:1.50`), so left in place it corrupts that item's
+  // Base64 comment — decodeComment then fails silently and the customer's
+  // note vanishes from the CO page and the kitchen ticket.
+  let tip: string | null = null;
+  const tipMatch = orderContent.match(TIP_TOKEN_REGEX);
+  if (tipMatch) {
+    tip = tipMatch[1];
+    orderContent = orderContent.replace(TIP_TOKEN_REGEX, '').trim();
+  }
+
   // Remove trailing semicolon if present
   orderContent = orderContent.replace(/;$/, '').trim();
 
@@ -388,7 +406,7 @@ export function hydrateMemoFull(rawMemo: string, menuData?: MenuDataForHydration
       displayContent = orderContent.replace(noteMatch[0], '').trim();
       if (decoded) displayContent += ` \u2014 ${decoded}`;
     }
-    return { lines: [{ type: 'raw', content: displayContent }], table, identifier, timing, preferredTable };
+    return { lines: [{ type: 'raw', content: displayContent }], table, identifier, timing, preferredTable, tip };
   }
 
   const itemStrings = orderContent.split(';').filter(s => s.trim() !== '');
@@ -496,7 +514,7 @@ export function hydrateMemoFull(rawMemo: string, menuData?: MenuDataForHydration
     }
   }
 
-  return { lines: hydratedParts, table, identifier, timing, preferredTable };
+  return { lines: hydratedParts, table, identifier, timing, preferredTable, tip };
 }
 
 // ============================================================================

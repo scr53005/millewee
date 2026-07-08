@@ -43,7 +43,7 @@ import { Button, buttonVariants } from '@/components/ui/button';
 import { Bell, BellOff, History, LogOut, Loader2, Printer, VolumeX, Volume2 } from 'lucide-react';
 import { AdminHeader } from '@/components/admin/AdminHeader';
 import {
-  hydrateMemo,
+  hydrateMemoFull,
   extractDistriateIdentifier,
   type HydratedOrderLine,
   type MenuDataForHydration,
@@ -65,6 +65,7 @@ interface Transfer extends RawTransfer {
   parsedMemo: HydratedOrderLine[];
   isCallWaiter: boolean;
   table: string | null;
+  tip: string | null;
   hydrationWarnings: string[];
 }
 
@@ -156,6 +157,11 @@ export default function CurrentOrdersPage() {
 
   const [isPoller, setIsPoller] = useState(false);
   const [pollerStatus, setPollerStatus] = useState<string>('');
+  // Poller election unreachable (network/CORS). Surfaced as a visible banner even in
+  // prod: a silent wake-up failure means nobody may be polling HAF and new orders
+  // never arrive — exactly the 2026-07 CORS incident, invisible in the console.
+  const [hubUnreachable, setHubUnreachable] = useState(false);
+  const wakeUpFailuresRef = useRef(0);
   const [pauseReason, setPauseReason] = useState<PauseReason>('none');
 
   const bellRef = useRef<HTMLAudioElement | null>(null);
@@ -408,8 +414,11 @@ export default function CurrentOrdersPage() {
         const isCallWaiter = detectCallWaiter(tx.memo);
 
         let parsedMemo: HydratedOrderLine[];
+        let tip: string | null = null;
         try {
-          parsedMemo = hydrateMemo(orderContent, currentMenuData ?? undefined);
+          const result = hydrateMemoFull(orderContent, currentMenuData ?? undefined);
+          parsedMemo = result.lines;
+          tip = result.tip;
         } catch {
           parsedMemo = [{ type: 'raw', content: orderContent }];
         }
@@ -419,6 +428,7 @@ export default function CurrentOrdersPage() {
           parsedMemo,
           isCallWaiter,
           table: getTableFromMemo(tx.memo),
+          tip,
           hydrationWarnings: getMissingMenuWarnings(orderContent, currentMenuData),
         };
       });
@@ -564,8 +574,12 @@ export default function CurrentOrdersPage() {
       });
       if (!res.ok) {
         console.warn(`[WAKE-UP] Failed: ${res.status}`);
+        wakeUpFailuresRef.current++;
+        if (wakeUpFailuresRef.current >= 2) setHubUnreachable(true);
         return;
       }
+      wakeUpFailuresRef.current = 0;
+      setHubUnreachable(false);
       const data = await res.json();
       if (data.shouldStartPolling) {
         setIsPoller(true);
@@ -584,6 +598,8 @@ export default function CurrentOrdersPage() {
       }
     } catch (err) {
       console.error('[WAKE-UP] Error:', err instanceof Error ? err.message : err);
+      wakeUpFailuresRef.current++;
+      if (wakeUpFailuresRef.current >= 2) setHubUnreachable(true);
     }
   }, [triggerHafPoll]);
 
@@ -798,6 +814,13 @@ export default function CurrentOrdersPage() {
           Il reprendra quand cet onglet redeviendra visible.
         </div>
       )}
+      {hubUnreachable && (
+        <div className="bg-red-50 border border-red-400 text-red-800 px-4 py-3 rounded mb-3 text-sm">
+          <strong>Connexion au serveur de commandes impossible</strong> &mdash; les
+          nouvelles commandes risquent de ne pas arriver. V&eacute;rifiez la connexion
+          internet, puis contactez le support si le probl&egrave;me persiste.
+        </div>
+      )}
       {error && (
         <div className="bg-red-50 border border-red-300 text-red-800 px-3 py-2 rounded mb-3 text-sm">
           Erreur: {error}
@@ -911,6 +934,12 @@ export default function CurrentOrdersPage() {
                     @{primary.from_account || 'inconnu'}
                   </div>
                 </div>
+                {primary.tip && (
+                  <div>
+                    <div className="uppercase text-[10px] text-gray-500 tracking-wider">Pourboire</div>
+                    <div className="font-bold text-green-700">💶 {primary.tip} €</div>
+                  </div>
+                )}
                 {isDev && (
                   <>
                     <div>
