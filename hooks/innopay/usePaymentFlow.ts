@@ -29,6 +29,7 @@ import {
   storeMemoBeforeOrder,
 } from '@/lib/innopay/utils';
 import { getAccountName, getActiveKey } from '@/lib/innopay/keystore';
+import { customerFacingError } from '@/lib/innopay/customer-error';
 
 // Guest checkout processing fee (5%)
 const GUEST_CHECKOUT_FEE_RATE = 0.05;
@@ -56,6 +57,7 @@ const messages: Record<Language, {
   waiterCallFailed: string;
   finalizationError: string;
   flow6PayError: string;
+  connectionProblem: string;
 }> = {
   fr: {
     waiterCalling: 'Appel en cours...',
@@ -68,6 +70,7 @@ const messages: Record<Language, {
     waiterCallFailed: "Echec de l'appel serveur",
     finalizationError: 'Une erreur est survenue lors de la finalisation',
     flow6PayError: 'Erreur lors du paiement',
+    connectionProblem: 'Hmm, nous avons un problème. Vérifiez votre connexion et réessayez.',
   },
   en: {
     waiterCalling: 'Calling waiter...',
@@ -80,6 +83,7 @@ const messages: Record<Language, {
     waiterCallFailed: 'Waiter call failed',
     finalizationError: 'An error occurred during finalization',
     flow6PayError: 'Payment error',
+    connectionProblem: 'Hmm, something went wrong. Please check your connection and try again.',
   },
   lb: {
     waiterCalling: 'Kellner g\u00ebtt geruff...',
@@ -92,6 +96,7 @@ const messages: Record<Language, {
     waiterCallFailed: 'Kellner-Ruff feelgeschloen',
     finalizationError: 'E Fehler ass beim Ofschloss opgetrueden',
     flow6PayError: 'Bezuelungsfehler',
+    connectionProblem: 'Hmm, mir hunn e Problem. Kontrolléiert Är Verbindung a probéiert nach eng Kéier.',
   },
 };
 
@@ -306,9 +311,7 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           type: 'ERROR',
           error: isTimeout
             ? t.processorTimeout
-            : err instanceof Error
-              ? err.message
-              : t.paymentError,
+            : customerFacingError(err, t.connectionProblem, t.paymentError),
           canRetry: true,
         });
       }
@@ -387,9 +390,12 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
         if (storedMemo) onPulseStart?.(storedMemo);
       } catch (err) {
         console.error('[FLOW 6] Payment error:', err);
+        const isTimeout = err instanceof DOMException && err.name === 'AbortError';
         dispatch({
           type: 'ERROR',
-          error: err instanceof Error ? err.message : t.flow6PayError,
+          error: isTimeout
+            ? t.processorTimeout
+            : customerFacingError(err, t.connectionProblem, t.flow6PayError),
           canRetry: true,
         });
       }
@@ -557,11 +563,25 @@ async function executeFlow6Payment(
   }
 
   console.log('[FLOW 6] Leg 1: Signing EURO transfer to innopay via hub...');
-  const signResponse = await fetch(`${hubUrl}/api/sign-and-broadcast`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(signPayload),
-  });
+  // 45s bound (vs the guest flow's 30s): sign-and-broadcast legitimately
+  // spends up to ~45s inside dhive node failover (3 nodes × 15s). Without a
+  // bound, a stalled request spins until the browser gives up with a raw
+  // "Failed to fetch" (zenbar E2E, 2026-07-12). An abort only stops the
+  // CLIENT wait — the hub may still broadcast; the duplicate-memo guard +
+  // modal cover the retry-after-timeout case.
+  const signController = new AbortController();
+  const signTimeout = setTimeout(() => signController.abort(), 45000);
+  let signResponse: Response;
+  try {
+    signResponse = await fetch(`${hubUrl}/api/sign-and-broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(signPayload),
+      signal: signController.signal,
+    });
+  } finally {
+    clearTimeout(signTimeout);
+  }
 
   if (!signResponse.ok) {
     const errData = await signResponse.json().catch(() => ({}));
@@ -575,9 +595,12 @@ async function executeFlow6Payment(
 
   // â”€â”€ Leg 2: innopay â†’ restaurant (HBD sweep + restaurant transfer) â”€â”€
   console.log('[FLOW 6] Leg 2: Calling wallet-payment for restaurant transfer...');
+  const wpController = new AbortController();
+  const wpTimeout = setTimeout(() => wpController.abort(), 45000);
   const wpResponse = await fetch(`${hubUrl}/api/wallet-payment`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal: wpController.signal,
     body: JSON.stringify({
       customerAccount: accountName,
       customerTxId,
@@ -586,7 +609,7 @@ async function executeFlow6Payment(
       orderMemo: memo,
       distriateSuffix: suffix,
     }),
-  });
+  }).finally(() => clearTimeout(wpTimeout));
 
   if (!wpResponse.ok) {
     const errData = await wpResponse.json().catch(() => ({}));
