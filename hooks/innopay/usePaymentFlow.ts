@@ -29,6 +29,7 @@ import {
   storeMemoBeforeOrder,
 } from '@/lib/innopay/utils';
 import { getAccountName, getActiveKey } from '@/lib/innopay/keystore';
+import { buildHandoffProof, handoffParams } from '@/lib/innopay/handoff';
 import { customerFacingError } from '@/lib/innopay/customer-error';
 
 // Guest checkout processing fee (5%)
@@ -221,8 +222,51 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           returnQuery ? `?${returnQuery}` : ''
         }`;
 
-        // Flows 4, 5, 7 - redirect to hub /user page
-        if (flow === 4 || flow === 5 || flow === 7) {
+        // Flow 7 (top-up + pay) — SECURE wallet hand-off. Sign a single-use,
+        // active-key proof and go to the hub's /wallet-handoff, which verifies it,
+        // imports this wallet into the hub (available across spokes), then drives
+        // the top-up checkout. Replaces the old /user?account= import (which trusted
+        // an account NAME with no proof — a funds-exposure hole). Mixed posture (no
+        // local active key) falls back to the legacy /user path.
+        if (flow === 7) {
+          const accountName = getAccountName();
+          const activeKey = getActiveKey();
+          localStorage.setItem('innopay_flow_pending', 'flow7_topup_and_pay');
+
+          if (accountName && activeKey) {
+            const params = new URLSearchParams({
+              ...handoffParams(buildHandoffProof(accountName, activeKey)),
+              restaurant: restaurantId,
+              restaurant_account: hiveAccount,
+              table,
+              order_amount: cartTotal.toFixed(2),
+              order_memo: memoWithSuffix,
+              return_url: returnUrl,
+            });
+            const url = `${hubUrl}/wallet-handoff?${params.toString()}`;
+            dispatch({ type: 'START_REDIRECT', returnUrl: url });
+            window.location.href = url;
+            return;
+          }
+
+          // Mixed posture (no local active key) → legacy /user path.
+          const params = new URLSearchParams();
+          params.set('restaurant', restaurantId);
+          params.set('restaurant_account', hiveAccount);
+          params.set('table', table);
+          params.set('order_amount', cartTotal.toFixed(2));
+          params.set('memo', memoWithSuffix);
+          params.set('return_url', returnUrl);
+          if (accountName) params.set('account', accountName);
+          params.set('topup_for', 'order');
+          const url = `${hubUrl}/user?${params.toString()}`;
+          dispatch({ type: 'START_REDIRECT', returnUrl: url });
+          window.location.href = url;
+          return;
+        }
+
+        // Flows 4, 5 - redirect to hub /user page (account creation)
+        if (flow === 4 || flow === 5) {
           const baseUrl = `${hubUrl}/user`;
           const params = new URLSearchParams();
           params.set('restaurant', restaurantId);
@@ -231,27 +275,13 @@ export function usePaymentFlow(options: UsePaymentFlowOptions): UsePaymentFlowRe
           params.set('order_amount', cartTotal.toFixed(2));
           params.set('memo', memoWithSuffix);
           params.set('return_url', returnUrl);
-
-          if (flow === 4 || flow === 5) {
-            params.set('choice', 'create');
-          }
-
-          if (flow === 7) {
-            const accountName = getAccountName();
-            if (accountName) params.set('account', accountName);
-            params.set('topup_for', 'order');
-          }
+          params.set('choice', 'create');
 
           const flowMarkers: Record<number, string> = {
             4: 'flow4_create_account_only',
             5: 'flow5_create_and_pay',
-            7: 'flow7_topup_and_pay',
           };
-          const flowMarker = flowMarkers[flow];
-          localStorage.setItem('innopay_flow_pending', flowMarker);
-          console.log(`[FLOW ${flow}] Set flow marker: ${flowMarker}`);
-          console.log(`[FLOW ${flow}] Redirecting to: ${baseUrl}?${params.toString()}`);
-
+          localStorage.setItem('innopay_flow_pending', flowMarkers[flow]);
           dispatch({ type: 'START_REDIRECT', returnUrl: `${baseUrl}?${params.toString()}` });
           window.location.href = `${baseUrl}?${params.toString()}`;
           return;
