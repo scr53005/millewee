@@ -16,6 +16,9 @@
 
 import React, { useRef, useCallback } from 'react';
 import Draggable from './Draggable';
+import WalletActions from './WalletActions';
+import { forgetLocalWallet } from '@/lib/innopay/forget-wallet';
+
 import { getInnopayUrl } from '@/lib/innopay/utils';
 
 export interface WalletBalance {
@@ -27,6 +30,7 @@ interface MiniWalletProps {
   balance: WalletBalance;
   onClose: () => void;
   visible: boolean;
+  language?: string;
   title?: string;
   initialPosition?: { x: number; y: number };
   balanceSource?: string;
@@ -39,12 +43,12 @@ export default function MiniWallet({
   onClose,
   visible,
   title = 'Votre portefeuille Innopay',
+  language = 'fr',
   initialPosition,
   balanceSource,
   pulseState = 'none',
   onPulseReset,
 }: MiniWalletProps) {
-  if (!visible) return null;
 
   const lastTapRef = useRef(0);
   const longPressRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -74,6 +78,8 @@ export default function MiniWallet({
   const handlePressEnd = useCallback(() => {
     if (longPressRef.current) { clearTimeout(longPressRef.current); longPressRef.current = null; }
   }, []);
+
+  if (!visible) return null;
 
   const isCached = balanceSource === 'localStorage-cache';
   const balanceClassName = isCached
@@ -106,19 +112,19 @@ export default function MiniWallet({
           }
         `}</style>
       )}
-      <Draggable
-        className={`z-[9998] bg-gradient-to-r ${gradientMap[pulseState] || gradientMap.none} text-white px-4 py-3 rounded-lg shadow-lg transition-colors duration-700`}
+      <Draggable keepInViewport bottomInset={40}
+        className={`z-[9998] innopay-miniwallet bg-gradient-to-r ${gradientMap[pulseState] || gradientMap.none} text-white  transition-colors duration-700`}
         initialPosition={initialPosition || defaultPosition}
         style={{
-          minWidth: '200px',
-          maxWidth: '300px',
+          minWidth: '220px',
+          maxWidth: '280px',
           ...(pulseState !== 'none' && pulseState !== 'green-solid'
             ? { animation: `walletPulse ${pulseState === 'green-slow' ? '4s' : '2s'} ease-in-out infinite` }
             : {}),
         }}
       >
         <div
-          className="flex items-center justify-between gap-3"
+          className="mw-header"
           onClick={handleTap}
           onMouseDown={handlePressStart}
           onMouseUp={handlePressEnd}
@@ -126,21 +132,25 @@ export default function MiniWallet({
           onTouchStart={handlePressStart}
           onTouchEnd={handlePressEnd}
         >
-          <div className="text-white opacity-50 text-xs flex-shrink-0">
-            :::
-          </div>
+          <svg className="mw-grip" aria-hidden="true" width="7" height="16" viewBox="0 0 7 16" fill="currentColor">
+            <circle cx="1" cy="4" r="1" /><circle cx="6" cy="4" r="1" />
+            <circle cx="1" cy="8" r="1" /><circle cx="6" cy="8" r="1" />
+            <circle cx="1" cy="12" r="1" /><circle cx="6" cy="12" r="1" />
+          </svg>
 
-          <div className="flex-1">
-            <p className="text-xs opacity-75 mb-1">{title}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{'\uD83D\uDCB0'}</span>
+          <div className="mw-info">
+            <p className="mw-title">{title}</p>
+            <div className="mw-balance-row">
+              <svg className="mw-icon" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <path d="M20 8V6a2 2 0 0 0-2-2H6a3 3 0 0 0 0 6h14v10H6a3 3 0 0 1-3-3V7m17 7h-4v3h4" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
               <div>
-                <p className={balanceClassName}>{balance.euroBalance.toFixed(2)} EUR</p>
+                <p className={`mw-amount ${balanceClassName}`}>{balance.euroBalance.toFixed(2)} EUR</p>
                 <a
                   href={`${innopayUrl}/user`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs opacity-75 font-mono underline"
+                  className="mw-account font-mono"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {balance.accountName}
@@ -153,7 +163,7 @@ export default function MiniWallet({
             onClick={handleCloseClick}
             onMouseDown={handleCloseClick}
             onTouchStart={handleCloseClick}
-            className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-colors flex-shrink-0"
+            className="mw-close"
             aria-label="Fermer"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -161,6 +171,7 @@ export default function MiniWallet({
             </svg>
           </button>
         </div>
+        <WalletActions key={balance.accountName} accountName={balance.accountName} language={language} onForget={() => forgetLocalWallet()} />
       </Draggable>
     </>
   );

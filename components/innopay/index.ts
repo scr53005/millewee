@@ -4,8 +4,8 @@
  */
 
 export { default as Draggable } from './Draggable';
-export { default as MiniWallet, WalletReopenButton } from './MiniWallet';
-export type { WalletBalance } from './MiniWallet';
+export { default as MiniWallet, WalletReopenButton } from './SharedMiniWallet';
+export type { WalletBalance } from './SharedMiniWallet';
 export { default as BottomBanner } from './BottomBanner';
 export { default as WalletNotificationBanner } from './WalletNotificationBanner';
 export { default as StatusBanners } from './StatusBanners';

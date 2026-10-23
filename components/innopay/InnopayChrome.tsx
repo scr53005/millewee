@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import MiniWallet, { WalletReopenButton } from './MiniWallet';
+import MiniWallet, { WalletReopenButton } from './SharedMiniWallet';
 import BottomBanner from './BottomBanner';
 import { useBalance } from '@/hooks/innopay/useBalance';
 import { useWalletPulse } from '@/hooks/use-wallet-pulse';
@@ -70,6 +70,7 @@ export function InnopayChrome() {
     <>
       {showWallet && (
         <MiniWallet
+          language={language}
           balance={{ accountName: accountName!, euroBalance: balance }}
           onClose={handleClose}
           visible

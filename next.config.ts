@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@innopay/ui'],
   allowedDevOrigins: ['192.168.178.55', '192.168.178.*'],
   async headers() {
     return [
