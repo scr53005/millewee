@@ -15,7 +15,7 @@ it('uses the installed package with app currency, hub link and confirmed local r
   try {
     act(() => root.render(<MiniWallet balance={{ accountName: 'alice', euroBalance: 12.5 }}
       language="en" visible onClose={vi.fn()} />));
-    expect(host.querySelector('.mw-amount')?.textContent).toBe('12.50 EUR');
+    expect(host.querySelector('.mw-amount')?.textContent).toBe('12.50 €');
     expect(host.querySelector('a')?.getAttribute('href')).toBe('https://wallet.example/user');
     const toggle = host.querySelector('[aria-expanded]')!;
     expect(toggle.getAttribute('aria-expanded')).toBe('false');

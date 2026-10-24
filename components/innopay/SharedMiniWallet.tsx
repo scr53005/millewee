@@ -23,6 +23,6 @@ interface Props {
 /** App adapter: currency, hub navigation and local removal stay here. */
 export default function MiniWallet({ balance, balanceSource, ...props }: Props) {
   return <Wallet {...props} accountName={balance.accountName}
-    balanceLabel={`${balance.euroBalance.toFixed(2)} EUR`} accountUrl={`${getInnopayUrl()}/user`}
+    balanceLabel={`${balance.euroBalance.toFixed(2)} €`} accountUrl={`${getInnopayUrl()}/user`}
     cached={balanceSource === 'localStorage-cache'} onForget={() => forgetLocalWallet()} />;
 }
