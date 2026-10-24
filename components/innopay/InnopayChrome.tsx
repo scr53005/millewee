@@ -81,7 +81,7 @@ export function InnopayChrome() {
         />
       )}
       {!!accountName && walletHidden && (
-        <WalletReopenButton onClick={handleReopen} visible />
+        <WalletReopenButton onClick={handleReopen} visible language={language} />
       )}
       <BottomBanner language={language} />
     </>
