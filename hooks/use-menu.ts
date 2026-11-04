@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 
 // ─── Types matching API responses ───
 
@@ -108,28 +108,39 @@ export interface MenuSpecial {
 
 // ─── Hooks ───
 
+// Shared with CartProvider, which reads the cached menu (without fetching) to refresh cart items.
+export const menuDishesQuery = queryOptions<{ categories: MenuCategory[]; dishes: MenuDish[] }>({
+  queryKey: ['menu', 'dishes'],
+  queryFn: async () => {
+    const res = await fetch('/api/menu/dishes');
+    if (!res.ok) throw new Error('Failed to fetch menu dishes');
+    return res.json();
+  },
+  // Same freshness as specials: the owner edits names/prices live, and a phone that
+  // stayed open (iOS keeps Safari tabs alive for days) must not show the old menu.
+  staleTime: 0,
+  refetchOnMount: 'always',
+  refetchOnWindowFocus: 'always',
+});
+
+export const menuDrinksQuery = queryOptions<{ categories: MenuCategory[]; drinks: MenuDrink[] }>({
+  queryKey: ['menu', 'drinks'],
+  queryFn: async () => {
+    const res = await fetch('/api/menu/drinks');
+    if (!res.ok) throw new Error('Failed to fetch menu drinks');
+    return res.json();
+  },
+  staleTime: 0,
+  refetchOnMount: 'always',
+  refetchOnWindowFocus: 'always',
+});
+
 export function useMenuDishes() {
-  return useQuery<{ categories: MenuCategory[]; dishes: MenuDish[] }>({
-    queryKey: ['menu', 'dishes'],
-    queryFn: async () => {
-      const res = await fetch('/api/menu/dishes');
-      if (!res.ok) throw new Error('Failed to fetch menu dishes');
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000, // 5 min
-  });
+  return useQuery(menuDishesQuery);
 }
 
 export function useMenuDrinks() {
-  return useQuery<{ categories: MenuCategory[]; drinks: MenuDrink[] }>({
-    queryKey: ['menu', 'drinks'],
-    queryFn: async () => {
-      const res = await fetch('/api/menu/drinks');
-      if (!res.ok) throw new Error('Failed to fetch menu drinks');
-      return res.json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+  return useQuery(menuDrinksQuery);
 }
 
 export function useMenuSpecials() {

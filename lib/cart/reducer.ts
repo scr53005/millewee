@@ -7,6 +7,7 @@ import {
   computeSubtotal,
   clampTip,
 } from './types';
+import { reconcileCartItems, type MenuSnapshot } from './reconcile';
 
 // ─── Actions ───
 
@@ -17,7 +18,8 @@ type CartAction =
   | { type: 'UPDATE_COMMENT'; key: string; comment: string }
   | { type: 'SET_TIP'; tip: number }
   | { type: 'CLEAR' }
-  | { type: 'HYDRATE'; state: CartState };
+  | { type: 'HYDRATE'; state: CartState }
+  | { type: 'SYNC_MENU'; menu: MenuSnapshot };
 
 export type { CartAction };
 
@@ -94,6 +96,11 @@ export function cartReducer(state: CartState, action: CartAction): CartState {
 
     case 'HYDRATE': {
       return action.state;
+    }
+
+    case 'SYNC_MENU': {
+      const items = reconcileCartItems(state.items, action.menu);
+      return items === state.items ? state : reclampTip({ ...state, items });
     }
 
     default:

@@ -1,6 +1,8 @@
 'use client';
 
 import { createContext, useContext, useReducer, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { menuDishesQuery, menuDrinksQuery } from '@/hooks/use-menu';
 import { cartReducer, type CartAction } from '@/lib/cart/reducer';
 import {
   type CartState,
@@ -103,6 +105,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
   }, []);
+
+  // Refresh cart items (names, prices, availability) from the menu whenever it loads or
+  // refetches. enabled:false = read the cache the menu sections fill; never an extra request.
+  const { data: dishesData } = useQuery({ ...menuDishesQuery, enabled: false });
+  const { data: drinksData } = useQuery({ ...menuDrinksQuery, enabled: false });
+  useEffect(() => {
+    if (!dishesData && !drinksData) return;
+    dispatch({ type: 'SYNC_MENU', menu: { dishes: dishesData?.dishes, drinks: drinksData?.drinks } });
+  }, [dishesData, drinksData, state.items]);
 
   const addItem = useCallback((item: CartItemData, comment?: string) => {
     dispatch({ type: 'ADD_ITEM', item, comment });

@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+// Owners rename/reprice items from the admin; no browser or CDN may keep an old copy
+// (iPhones kept showing renamed drinks, 2026-11-04).
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   const [categories, dishes] = await Promise.all([
     prisma.category.findMany({
@@ -31,5 +35,5 @@ export async function GET() {
     })),
   }));
 
-  return NextResponse.json({ categories, dishes: serialized });
+  return NextResponse.json({ categories, dishes: serialized }, { headers: { 'Cache-Control': 'no-store' } });
 }
