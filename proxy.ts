@@ -1,35 +1,24 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { ADMIN_COOKIE, adminSecret, verifyAdminSession } from './lib/admin/session';
 
-export function proxy(request: NextRequest) {
-  // Check if accessing admin routes (except login)
-  if (request.nextUrl.pathname.startsWith('/admin') &&
-      !request.nextUrl.pathname.startsWith('/admin/login')) {
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const isAdminPage = pathname.startsWith('/admin') && !pathname.startsWith('/admin/login');
+  const isAdminApi = pathname.startsWith('/api/admin') && !pathname.startsWith('/api/admin/auth');
+  if (!isAdminPage && !isAdminApi) return NextResponse.next();
 
-    const authCookie = request.cookies.get('admin_session');
+  // The cookie must be a session signed with ADMIN_PASSWORD (lib/admin/session.ts),
+  // not just present: the old fixed value "authenticated" could be set by anyone.
+  const authorised = await verifyAdminSession(request.cookies.get(ADMIN_COOKIE)?.value, adminSecret());
+  if (authorised) return NextResponse.next();
 
-    if (!authCookie || authCookie.value !== 'authenticated') {
-      const loginUrl = new URL('/admin/login', request.url);
-      loginUrl.searchParams.set('returnUrl', request.nextUrl.pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  if (isAdminApi) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  // Check admin API routes
-  if (request.nextUrl.pathname.startsWith('/api/admin') &&
-      !request.nextUrl.pathname.startsWith('/api/admin/auth')) {
-
-    const authCookie = request.cookies.get('admin_session');
-
-    if (!authCookie || authCookie.value !== 'authenticated') {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-  }
-
-  return NextResponse.next();
+  const loginUrl = new URL('/admin/login', request.url);
+  loginUrl.searchParams.set('returnUrl', pathname);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
