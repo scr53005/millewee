@@ -13,6 +13,7 @@ import {
   saveCachedBalance,
   type BalanceResponse,
 } from '@/lib/innopay/balance';
+import { readCachedRubis, saveCachedRubis } from '@/lib/innopay/rubis';
 
 interface UseBalanceOptions {
   enabled?: boolean;
@@ -21,6 +22,8 @@ interface UseBalanceOptions {
 
 interface UseBalanceReturn {
   balance: number | null;
+  /** RUBIS held; null until known. Only `source === 'hive-engine'` is a confirmed chain read. */
+  rubis: number | null;
   isLoading: boolean;
   isError: boolean;
   error: Error | null;
@@ -76,6 +79,7 @@ export function useBalance(
               );
               return {
                 balance: cached.balance,
+                rubis: readCachedRubis(localStorage),
                 source: 'webhook-trusted-cache',
                 timestamp: cached.timestamp,
               };
@@ -90,6 +94,7 @@ export function useBalance(
       console.log('[useBalance] Fetching fresh balance from blockchain');
       const result = await fetchEuroBalance(accountName);
       saveCachedBalance(result.balance, result.timestamp);
+      if (result.rubis !== null) saveCachedRubis(localStorage, result.rubis);
 
       console.log(
         '[useBalance] Fresh balance received:',
@@ -115,6 +120,7 @@ export function useBalance(
         );
         return {
           balance: cached.balance,
+          rubis: readCachedRubis(localStorage),
           source: 'localStorage-cache',
           timestamp: cached.timestamp,
         };
@@ -141,8 +147,10 @@ export function useBalance(
       return newBalance;
     },
     onSuccess: (newBalance) => {
-      queryClient.setQueryData<BalanceResponse>(['balance', accountName], () => ({
+      // A payment changes EURO only; keep the RUBIS already shown.
+      queryClient.setQueryData<BalanceResponse>(['balance', accountName], (previous) => ({
         balance: newBalance,
+        rubis: previous?.rubis ?? readCachedRubis(localStorage),
         source: 'optimistic-update',
         timestamp: Date.now(),
       }));
@@ -152,6 +160,7 @@ export function useBalance(
 
   return {
     balance: data?.balance ?? null,
+    rubis: data?.rubis ?? null,
     isLoading,
     isError,
     error: error as Error | null,

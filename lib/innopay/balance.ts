@@ -6,14 +6,30 @@
 
 export interface BalanceResponse {
   balance: number;
+  /** RUBIS held; null when not read from the chain yet (no cache either). */
+  rubis: number | null;
   source: string; // 'hive-engine' | 'localStorage-cache' | 'optimistic-update'
   timestamp: number;
+}
+
+/**
+ * EURO and RUBIS from one Hive-Engine `balances` answer. A token the account never held has
+ * no row at all, which is a genuine 0, not a failed read. Exported for testing.
+ */
+export function parseTokenBalances(rows: unknown): { euro: number; rubis: number } {
+  const list = Array.isArray(rows) ? rows : [];
+  const amount = (symbol: string) => {
+    const row = list.find((r: { symbol?: unknown }) => r?.symbol === symbol) as { balance?: unknown } | undefined;
+    const value = row ? parseFloat(String(row.balance)) : 0;
+    return Number.isFinite(value) ? value : 0;
+  };
+  return { euro: amount('EURO'), rubis: amount('RUBIS') };
 }
 
 const HIVE_ENGINE_API = 'https://api.hive-engine.com/rpc/contracts';
 
 /**
- * Fetch EURO balance for a Hive account directly from Hive-Engine
+ * Fetch EURO (and RUBIS) balances for a Hive account directly from Hive-Engine
  * (Client-side implementation - no API route needed)
  */
 export async function fetchEuroBalance(accountName: string): Promise<BalanceResponse> {
@@ -29,11 +45,12 @@ export async function fetchEuroBalance(accountName: string): Promise<BalanceResp
         params: {
           contract: 'tokens',
           table: 'balances',
+          // One request for both tokens (RUBIS-PLAN.md §5).
           query: {
             account: accountName,
-            symbol: 'EURO'
+            symbol: { $in: ['EURO', 'RUBIS'] }
           },
-          limit: 1
+          limit: 2
         },
         id: 1
       })
@@ -44,13 +61,13 @@ export async function fetchEuroBalance(accountName: string): Promise<BalanceResp
     }
 
     const data = await response.json();
-    const result = data.result?.[0];
-    const euroBalance = result ? parseFloat(result.balance) : 0;
+    const { euro: euroBalance, rubis } = parseTokenBalances(data.result);
 
-    console.log('[BALANCE API] Retrieved balance:', euroBalance, 'from hive-engine');
+    console.log('[BALANCE API] Retrieved balance:', euroBalance, 'EURO,', rubis, 'RUBIS from hive-engine');
 
     return {
       balance: parseFloat(euroBalance.toFixed(2)),
+      rubis,
       source: 'hive-engine',
       timestamp: Date.now(),
     };

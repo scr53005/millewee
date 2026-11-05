@@ -10,6 +10,8 @@ const STORAGE_KEYS_TO_CLEAR = [
   'innopay_accounts',
   'innopay_lastBalance',
   'innopay_lastBalance_timestamp',
+  'innopay_lastRubis',
+  'innopay_spend_rubis_first',
   'innopay_balance_trustUntil',
   'innopay_pending_order',
   'innopay_flow_pending',

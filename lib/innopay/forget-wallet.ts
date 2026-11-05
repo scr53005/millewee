@@ -7,7 +7,7 @@ const WALLET_STORAGE_KEYS = [
   'innopay_postingPrivate', 'innopay_postingPublic', 'innopay_activePublic', 'innopay_memoPublic',
   'innopay_ownerPrivate', 'innopay_ownerPublic', 'innopay_email', 'innopay_accounts',
   'innopay_wallet_credentials', 'innopay_credentialToken', 'innopay_import_attempts',
-  'innopay_lastBalance', 'innopay_lastBalance_timestamp', 'innopay_balance_trustUntil',
+  'innopay_lastBalance', 'innopay_lastBalance_timestamp', 'innopay_lastRubis', 'innopay_balance_trustUntil',
   'innopay_flow6_cooldown_until', 'innopay_latestMemoContent', 'innopay_latestMemoDateTime',
   'innopay_fulfilledDetectedAt', 'innopay_orderConfirmedForMemo', 'innopay_pending_order',
   'innopay_debug_last_params',
