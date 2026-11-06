@@ -90,6 +90,16 @@ export function paymentReducer(state: PaymentState, event: PaymentEvent): Paymen
       if (event.type === 'START_REDIRECT') {
         return { ...state, returnUrl: event.returnUrl };
       }
+      // The guest checkout POST (Flow 3) fails while we are still 'redirecting': without this,
+      // the error was dropped and the redirect spinner never stopped.
+      if (event.type === 'ERROR') {
+        return {
+          status: 'error',
+          flow: state.flow,
+          error: event.error,
+          canRetry: event.canRetry ?? true
+        };
+      }
       if (event.type === 'RESET' || event.type === 'DISMISS_BANNER') {
         return { status: 'idle' };
       }
